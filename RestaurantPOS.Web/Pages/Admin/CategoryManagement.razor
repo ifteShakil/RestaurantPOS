@@ -1,0 +1,121 @@
+﻿@page "/admin/categories"
+@using RestaurantPOS.Shared.DTOs.Menu
+@inject RestaurantPOS.Web.Services.ApiService ApiService
+
+<h3>Menu Categories</h3>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5>@(editingId == null ? "Add New Category" : "Edit Category")</h5>
+        <div class="row g-2">
+            <div class="col-md-6">
+                <input class="form-control" placeholder="Category Name (e.g., Main Course)" @bind="formName" />
+            </div>
+            <div class="col-md-3">
+                <input type="number" class="form-control" placeholder="Display Order" @bind="formDisplayOrder" />
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary" @onclick="SaveCategory">
+                    @(editingId == null ? "Add" : "Update")
+                </button>
+                @if (editingId != null)
+                {
+                    <button class="btn btn-secondary ms-1" @onclick="CancelEdit">Cancel</button>
+                }
+            </div>
+        </div>
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mt-2 mb-0 py-2">@errorMessage</div>
+        }
+    </div>
+</div>
+
+@if (categories == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table table-hover">
+        <thead>
+            <tr><th>Name</th><th>Display Order</th><th>Items</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var c in categories)
+            {
+                <tr>
+                    <td>@c.Name</td>
+                    <td>@c.DisplayOrder</td>
+                    <td>@c.Items.Count</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => EditCategory(c)">Edit</button>
+                        <button class="btn btn-sm btn-outline-danger ms-1" @onclick="() => DeleteCategory(c.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<MenuCategoryDto>? categories;
+    private string formName = "";
+    private int formDisplayOrder = 0;
+    private int? editingId = null;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync() => await LoadCategories();
+
+    private async Task LoadCategories() => categories = await ApiService.GetCategoriesAsync();
+
+    private async Task SaveCategory()
+    {
+        errorMessage = null;
+        if (string.IsNullOrWhiteSpace(formName))
+        {
+            errorMessage = "Category Name is required.";
+            return;
+        }
+
+        var dto = new CreateMenuCategoryDto { Name = formName, DisplayOrder = formDisplayOrder };
+        bool success;
+
+        if (editingId == null)
+            success = await ApiService.CreateCategoryAsync(dto);
+        else
+            success = await ApiService.UpdateCategoryAsync(editingId.Value, dto);
+
+        if (success)
+        {
+            ResetForm();
+            await LoadCategories();
+        }
+        else
+        {
+            errorMessage = "There was a problem saving the category.";
+        }
+    }
+
+    private void EditCategory(MenuCategoryDto c)
+    {
+        editingId = c.Id;
+        formName = c.Name;
+        formDisplayOrder = c.DisplayOrder;
+    }
+
+    private void CancelEdit() => ResetForm();
+
+    private async Task DeleteCategory(int id)
+    {
+        var success = await ApiService.DeleteCategoryAsync(id);
+        if (success) await LoadCategories();
+    }
+
+    private void ResetForm()
+    {
+        editingId = null;
+        formName = "";
+        formDisplayOrder = 0;
+    }
+}

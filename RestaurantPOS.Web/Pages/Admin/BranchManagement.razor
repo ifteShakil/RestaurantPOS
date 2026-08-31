@@ -1,0 +1,190 @@
+﻿@* RestaurantPOS.Web/Pages/Admin/BranchManagement.razor *@
+@page "/admin/branches"
+@using RestaurantPOS.Shared.DTOs.Branch
+@inject RestaurantPOS.Web.Services.ApiService ApiService
+
+<h3>Branches</h3>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5>@(editingId == null ? "Add New Branch" : "Edit Branch")</h5>
+        <div class="row g-2">
+            <div class="col-md-3">
+                <input class="form-control" placeholder="Branch Name" @bind="formName" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control" placeholder="Code (e.g., MBB-01)" @bind="formCode" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control" placeholder="Country Code (e.g., SZ)" @bind="formCountryCode" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control" placeholder="Currency (e.g., SZL)" @bind="formCurrencyCode" />
+            </div>
+            <div class="col-md-1">
+                <input class="form-control" placeholder="Symbol" @bind="formCurrencySymbol" />
+            </div>
+            <div class="col-md-2">
+                <input type="number" step="0.01" class="form-control" placeholder="Tax %" @bind="formTaxRate" />
+            </div>
+        </div>
+        <div class="row g-2 mt-1">
+            <div class="col-md-3">
+                <input class="form-control" placeholder="Timezone (e.g., Africa/Mbabane)" @bind="formTimeZone" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control" placeholder="Locale (e.g., en-SZ)" @bind="formLocale" />
+            </div>
+            <div class="col-md-4">
+                <input class="form-control" placeholder="Address" @bind="formAddress" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control" placeholder="Phone (optional)" @bind="formPhone" />
+            </div>
+            <div class="col-md-1">
+                <button class="btn btn-primary w-100" @onclick="SaveBranch">
+                    @(editingId == null ? "Add" : "Update")
+                </button>
+            </div>
+        </div>
+        @if (editingId != null)
+        {
+            <button class="btn btn-sm btn-secondary mt-2" @onclick="CancelEdit">Cancel</button>
+        }
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mt-2 mb-0 py-2">@errorMessage</div>
+        }
+    </div>
+</div>
+
+@if (branches == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table table-hover">
+        <thead>
+            <tr><th>Name</th><th>Code</th><th>Country</th><th>Currency</th><th>Tax %</th><th>Active</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var b in branches)
+            {
+                <tr>
+                    <td>@b.Name</td>
+                    <td>@b.Code</td>
+                    <td>@b.CountryCode</td>
+                    <td>@b.CurrencyCode</td>
+                    <td>@b.TaxRatePercent%</td>
+                    <td>
+                        @if (b.IsActive)
+                        {
+                            <span class="badge bg-success">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Inactive</span>
+                        }
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => EditBranch(b)">Edit</button>
+                        <button class="btn btn-sm btn-outline-danger ms-1" @onclick="() => DeactivateBranch(b.Id)">Deactivate</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<BranchDto>? branches;
+
+    private string formName = "";
+    private string formCode = "";
+    private string formCountryCode = "";
+    private string formCurrencyCode = "";
+    private string formCurrencySymbol = "";
+    private decimal formTaxRate = 0;
+    private string formTimeZone = "";
+    private string formLocale = "en-US";
+    private string formAddress = "";
+    private string formPhone = "";
+    private int? editingId = null;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync() => await LoadBranches();
+
+    private async Task LoadBranches() => branches = await ApiService.GetBranchesAsync();
+
+    private async Task SaveBranch()
+    {
+        errorMessage = null;
+        if (string.IsNullOrWhiteSpace(formName) || string.IsNullOrWhiteSpace(formCode))
+        {
+            errorMessage = "Branch name and code are required.";
+            return;
+        }
+
+        var dto = new CreateBranchDto
+        {
+            Name = formName,
+            Code = formCode,
+            CountryCode = formCountryCode,
+            CurrencyCode = formCurrencyCode,
+            CurrencySymbol = formCurrencySymbol,
+            TaxRatePercent = formTaxRate,
+            TimeZoneId = formTimeZone,
+            LocaleCode = formLocale,
+            Address = formAddress,
+            Phone = string.IsNullOrWhiteSpace(formPhone) ? null : formPhone
+        };
+
+        bool success;
+        if (editingId == null)
+            success = await ApiService.CreateBranchAsync(dto);
+        else
+            success = await ApiService.UpdateBranchAsync(editingId.Value, dto);
+
+        if (success)
+        {
+            ResetForm();
+            await LoadBranches();
+        }
+        else
+        {
+            errorMessage = "Failed to save. Branch code might already exist.";
+        }
+    }
+
+    private void EditBranch(BranchDto b)
+    {
+        editingId = b.Id;
+        formName = b.Name;
+        formCode = b.Code;
+        formCountryCode = b.CountryCode;
+        formCurrencyCode = b.CurrencyCode;
+        formCurrencySymbol = b.CurrencySymbol;
+        formTaxRate = b.TaxRatePercent;
+        formTimeZone = b.TimeZoneId;
+        formLocale = b.LocaleCode;
+        formAddress = b.Address;
+        formPhone = b.Phone ?? "";
+    }
+
+    private void CancelEdit() => ResetForm();
+
+    private async Task DeactivateBranch(int id)
+    {
+        var success = await ApiService.DeactivateBranchAsync(id);
+        if (success) await LoadBranches();
+    }
+
+    private void ResetForm()
+    {
+        editingId = null;
+        formName = ""; formCode = ""; formCountryCode = ""; formCurrencyCode = "";
+        formCurrencySymbol = ""; formTaxRate = 0; formTimeZone = ""; formLocale = "en-US";
+        formAddress = ""; formPhone = "";
+    }
+}

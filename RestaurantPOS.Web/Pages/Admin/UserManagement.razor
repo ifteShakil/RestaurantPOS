@@ -1,0 +1,143 @@
+﻿@page "/admin/users"
+@using RestaurantPOS.Shared.DTOs.User
+@inject RestaurantPOS.Web.Services.ApiService ApiService
+@inject RestaurantPOS.Web.Services.AppState AppState
+@implements IDisposable
+
+<h3>Staff — @AppState.CurrentBranchName</h3>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5>Add New Staff</h5>
+        <div class="row g-2">
+            <div class="col-md-3">
+                <input class="form-control" placeholder="Full Name" @bind="formFullName" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control" placeholder="Username" @bind="formUsername" />
+            </div>
+            <div class="col-md-2">
+                <input type="password" class="form-control" placeholder="Password" @bind="formPassword" />
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" @bind="formRole">
+                    <option value="">-- Role --</option>
+                    <option value="BranchManager">Branch Manager</option>
+                    <option value="Cashier">Cashier</option>
+                    <option value="Waiter">Waiter</option>
+                    <option value="KitchenStaff">Kitchen Staff</option>
+                    <option value="SuperAdmin">Super Admin</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-primary w-100" @onclick="AddUser">+ Add</button>
+            </div>
+        </div>
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mt-2 mb-0 py-2">@errorMessage</div>
+        }
+    </div>
+</div>
+
+@if (users == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table table-hover">
+        <thead>
+            <tr><th>Name</th><th>Username</th><th>Role</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var u in users)
+            {
+                <tr>
+                    <td>@u.FullName</td>
+                    <td>@u.Username</td>
+                    <td><span class="badge bg-info text-dark">@u.Role</span></td>
+                    <td>
+                        @if (u.IsActive)
+                        {
+                            <span class="badge bg-success">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Inactive</span>
+                        }
+                    </td>
+                    <td>
+                        @if (u.IsActive)
+                        {
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeactivateUser(u.Id)">Deactivate</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<UserDto>? users;
+
+    private string formFullName = "";
+    private string formUsername = "";
+    private string formPassword = "";
+    private string formRole = "";
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppState.OnChange += HandleBranchChanged;
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers() => users = await ApiService.GetUsersByBranchAsync(AppState.CurrentBranchId);
+
+    private async void HandleBranchChanged()
+    {
+        await LoadUsers();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task AddUser()
+    {
+        errorMessage = null;
+        if (string.IsNullOrWhiteSpace(formFullName) || string.IsNullOrWhiteSpace(formUsername)
+            || string.IsNullOrWhiteSpace(formPassword) || string.IsNullOrWhiteSpace(formRole))
+        {
+            errorMessage = "All fields are required.";
+            return;
+        }
+
+        var dto = new CreateUserDto
+        {
+            FullName = formFullName,
+            Username = formUsername,
+            Password = formPassword,
+            Role = formRole,
+            BranchId = formRole == "SuperAdmin" ? null : AppState.CurrentBranchId
+        };
+
+        var success = await ApiService.CreateUserAsync(dto);
+        if (success)
+        {
+            formFullName = ""; formUsername = ""; formPassword = ""; formRole = "";
+            await LoadUsers();
+        }
+        else
+        {
+            errorMessage = "Failed to save. Username might already exist.";
+        }
+    }
+
+    private async Task DeactivateUser(int id)
+    {
+        var success = await ApiService.DeactivateUserAsync(id);
+        if (success) await LoadUsers();
+    }
+
+    public void Dispose() => AppState.OnChange -= HandleBranchChanged;
+}

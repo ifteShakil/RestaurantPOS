@@ -1,0 +1,133 @@
+﻿@RestaurantPOS.API_HostAddress = https://localhost:7023
+
+### 1. Get All Branch 
+GET {{RestaurantPOS.API_HostAddress}}/api/branch
+Accept: application/json
+
+###
+### 2. Get a Branch 
+GET {{RestaurantPOS.API_HostAddress}}/api/menu/branch/1
+Accept: application/json
+
+###
+### 3. Create Menu Category
+POST {{RestaurantPOS.API_HostAddress}}/api/menucategory
+Content-Type: application/json
+Accept: application/json
+{
+  "name": "Main Course",
+  "displayOrder": 1
+}
+
+###
+
+### 4. Create Menu Item
+POST {{RestaurantPOS.API_HostAddress}}/api/menu
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Grilled Chicken",
+  "description": "Served with rice and vegetables",
+  "basePrice": 85.00,
+  "categoryId": 1
+}
+
+###
+
+### Create Table
+POST {{RestaurantPOS.API_HostAddress}}/api/table
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Table 1",
+  "capacity": 4,
+  "branchId": 1
+}
+
+###
+
+### Create User (Waiter)
+POST {{RestaurantPOS.API_HostAddress}}/api/user
+Content-Type: application/json
+Accept: application/json
+
+{
+  "fullName": "John Waiter",
+  "username": "john",
+  "password": "Test@1234",
+  "role": "Waiter",
+  "branchId": 1
+}
+
+###
+
+
+### Create Order (tableId, waiterId )
+POST {{RestaurantPOS.API_HostAddress}}/api/order
+Content-Type: application/json
+Accept: application/json
+
+{
+  "branchId": 1,
+  "tableId": 1,
+  "waiterId": 1,
+  "items": [
+    {
+      "menuItemId": 1,
+      "menuItemVariantId": null,
+      "quantity": 2,
+      "note": "Less spicy"
+    }
+  ]
+}
+
+###
+
+### Order-এর অবস্থা দেখুন (orderId = উপরের রেসপন্স থেকে)
+GET {{RestaurantPOS.API_HostAddress}}/api/order/1
+Accept: application/json
+
+###
+
+
+
+### Order Status আপডেট করুন (Pending → InKitchen)
+PATCH {{RestaurantPOS.API_HostAddress}}/api/order/1/status
+Content-Type: application/json
+Accept: application/json
+
+  "InKitchen"
+
+
+
+###
+
+### Bill জেনারেট করুন (orderId = 1)
+POST {{RestaurantPOS.API_HostAddress}}/api/bill/generate/1
+Accept: application/json
+
+###
+
+
+
+### Payment যোগ করুন (billId = আগের রেসপন্স থেকে, paymentMethodTypeId = 1 হলো Cash)
+POST {{RestaurantPOS.API_HostAddress}}/api/bill/payment
+Content-Type: application/json
+Accept: application/json
+
+{
+  "billId": 1,
+  "paymentMethodTypeId": 1,
+  "amount": 195.50,
+  "transactionRef": null
+}
+
+###
+
+### Order-টা এখন Paid কিনা যাচাই করুন
+GET {{RestaurantPOS.API_HostAddress}}/api/order/1
+Accept: application/json
+
+###

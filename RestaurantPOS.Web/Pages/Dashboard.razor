@@ -1,0 +1,70 @@
+﻿@page "/"
+@using RestaurantPOS.Shared.DTOs.Dashboard
+@inject RestaurantPOS.Web.Services.ApiService ApiService
+@inject RestaurantPOS.Web.Services.AppState AppState
+@implements IDisposable
+
+<MudText Typo="Typo.h4" Class="mb-4" Style="color:#0a1f44; font-weight:700;">
+    Dashboard — @AppState.CurrentBranchName
+</MudText>
+
+@if (summary != null)
+{
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 mud-success" Elevation="3" Style="border-radius:12px; position:relative; overflow:hidden; color:white;">
+                <MudText Typo="Typo.caption" Style="opacity:0.85; text-transform:uppercase; letter-spacing:1px;">Today's Sales</MudText>
+                <MudText Typo="Typo.h4" Class="mt-1" Style="font-weight:700;">@AppState.CurrentCurrencyCode @summary.TodaysSales.ToString("N2")</MudText>
+                <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Style="opacity:0.25; font-size:2.5rem; position:absolute; right:16px; top:16px;" />
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 mud-info" Elevation="3" Style="border-radius:12px; position:relative; overflow:hidden; color:white;">
+                <MudText Typo="Typo.caption" Style="opacity:0.85; text-transform:uppercase; letter-spacing:1px;">Active Orders</MudText>
+                <MudText Typo="Typo.h4" Class="mt-1" Style="font-weight:700;">@summary.ActiveOrderCount</MudText>
+                <MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Style="opacity:0.25; font-size:2.5rem; position:absolute; right:16px; top:16px;" />
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 mud-warning" Elevation="3" Style="border-radius:12px; position:relative; overflow:hidden; color:white;">
+                <MudText Typo="Typo.caption" Style="opacity:0.85; text-transform:uppercase; letter-spacing:1px;">Table Status</MudText>
+                <MudText Typo="Typo.h4" Class="mt-1" Style="font-weight:700;">@summary.OccupiedTables / @summary.TotalTables</MudText>
+                <MudIcon Icon="@Icons.Material.Filled.TableRestaurant" Style="opacity:0.25; font-size:2.5rem; position:absolute; right:16px; top:16px;" />
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 mud-secondary" Elevation="3" Style="border-radius:12px; position:relative; overflow:hidden; color:white;">
+                <MudText Typo="Typo.caption" Style="opacity:0.85; text-transform:uppercase; letter-spacing:1px;">Branch</MudText>
+                <MudText Typo="Typo.h6" Class="mt-1" Style="font-weight:700;">@AppState.CurrentBranchName</MudText>
+                <MudIcon Icon="@Icons.Material.Filled.Business" Style="opacity:0.25; font-size:2.5rem; position:absolute; right:16px; top:16px;" />
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+else
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+
+@code {
+    private DashboardSummaryDto? summary;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppState.OnChange += HandleBranchChanged;
+        await LoadSummary();
+    }
+
+    private async Task LoadSummary() => summary = await ApiService.GetDashboardSummaryAsync(AppState.CurrentBranchId);
+
+    private async void HandleBranchChanged()
+    {
+        await LoadSummary();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose() => AppState.OnChange -= HandleBranchChanged;
+}

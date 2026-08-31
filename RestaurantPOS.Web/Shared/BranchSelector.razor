@@ -1,0 +1,44 @@
+﻿@inject RestaurantPOS.Web.Services.ApiService ApiService
+@inject RestaurantPOS.Web.Services.AppState AppState
+
+@if (branches != null)
+{
+    <MudSelect T="int" Value="AppState.CurrentBranchId" ValueChanged="OnBranchChanged"
+               ToStringFunc="@GetBranchDisplayText"
+               Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined"
+               FullWidth="false"
+               Style="background:white; border-radius:6px; min-width:220px;">
+        @foreach (var b in branches)
+        {
+            <MudSelectItem T="int" Value="@b.Id">@b.Name (@b.CountryCode)</MudSelectItem>
+        }
+    </MudSelect>
+}
+
+@code {
+    private List<RestaurantPOS.Shared.DTOs.Branch.BranchDto>? branches;
+
+    protected override async Task OnInitializedAsync()
+    {
+        branches = await ApiService.GetBranchesAsync();
+        var current = branches?.FirstOrDefault(b => b.Id == AppState.CurrentBranchId) ?? branches?.FirstOrDefault();
+        if (current != null)
+        {
+            AppState.SetBranch(current.Id, current.Name, current.CurrencyCode);
+        }
+    }
+
+    private void OnBranchChanged(int newBranchId)
+    {
+        var branch = branches?.FirstOrDefault(b => b.Id == newBranchId);
+        if (branch != null)
+            AppState.SetBranch(branch.Id, branch.Name, branch.CurrencyCode);
+    }
+
+
+    private string GetBranchDisplayText(int branchId)
+    {
+        var b = branches?.FirstOrDefault(x => x.Id == branchId);
+        return b != null ? $"{b.Name} ({b.CountryCode})" : "";
+    }
+}

@@ -1,0 +1,142 @@
+﻿@page "/admin/tables"
+@using RestaurantPOS.Shared.DTOs.Table
+@inject RestaurantPOS.Web.Services.ApiService ApiService
+@inject RestaurantPOS.Web.Services.AppState AppState
+@implements IDisposable
+
+<h3>Tables — @AppState.CurrentBranchName</h3>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5>Add new Table</h5>
+        <div class="row g-2">
+            <div class="col-md-4">
+                <input class="form-control" placeholder="Table Name (e.g., Table 5)" @bind="formName" />
+            </div>
+            <div class="col-md-3">
+                <input type="number" class="form-control" placeholder="Capacity (Number of Seats)" @bind="formCapacity" />
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary w-100" @onclick="AddTable">+ Add</button>
+            </div>
+        </div>
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mt-2 mb-0 py-2">@errorMessage</div>
+        }
+    </div>
+</div>
+
+@if (tables == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="row">
+        @foreach (var t in tables)
+        {
+            <div class="col-md-3 mb-3">
+                <div class="card @GetStatusCardClass(t.Status)">
+                    <div class="card-body">
+                        <h5 class="card-title">@t.Name</h5>
+                        <p class="mb-1">Capacity: @t.Capacity</p>
+                        <span class="badge @GetStatusBadgeClass(t.Status)">@t.Status</span>
+
+                        <div class="mt-3">
+                            <select class="form-select form-select-sm" @onchange="(e) => ChangeStatus(t.Id, e.Value!.ToString()!)">
+                                <option value="Available" selected="@(t.Status == "Available")">Available</option>
+                                <option value="Occupied" selected="@(t.Status == "Occupied")">Occupied</option>
+                                <option value="Reserved" selected="@(t.Status == "Reserved")">Reserved</option>
+                                <option value="NeedsCleaning" selected="@(t.Status == "NeedsCleaning")">Needs Cleaning</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger mt-2 w-100" @onclick="() => DeleteTable(t.Id)">Delete</button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<TableDto>? tables;
+    private string formName = "";
+    private int formCapacity = 4;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppState.OnChange += HandleBranchChanged;
+        await LoadTables();
+    }
+
+    private async Task LoadTables() => tables = await ApiService.GetTablesByBranchAsync(AppState.CurrentBranchId);
+
+    private async void HandleBranchChanged()
+    {
+        await LoadTables();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task AddTable()
+    {
+        errorMessage = null;
+        if (string.IsNullOrWhiteSpace(formName) || formCapacity <= 0)
+        {
+            errorMessage = "Table Name and valid Capacity are required.";
+            return;
+        }
+
+        var dto = new CreateTableDto
+        {
+            Name = formName,
+            Capacity = formCapacity,
+            BranchId = AppState.CurrentBranchId
+        };
+
+        var success = await ApiService.CreateTableAsync(dto);
+        if (success)
+        {
+            formName = "";
+            formCapacity = 4;
+            await LoadTables();
+        }
+        else
+        {
+            errorMessage = "There was a problem saving the table.";
+        }
+    }
+
+    private async Task ChangeStatus(int tableId, string newStatus)
+    {
+        var success = await ApiService.UpdateTableStatusAsync(tableId, newStatus);
+        if (success) await LoadTables();
+    }
+
+    private async Task DeleteTable(int id)
+    {
+        var success = await ApiService.DeleteTableAsync(id);
+        if (success) await LoadTables();
+    }
+
+    private string GetStatusCardClass(string status) => status switch
+    {
+        "Available" => "border-success",
+        "Occupied" => "border-danger",
+        "Reserved" => "border-warning",
+        "NeedsCleaning" => "border-secondary",
+        _ => ""
+    };
+
+    private string GetStatusBadgeClass(string status) => status switch
+    {
+        "Available" => "bg-success",
+        "Occupied" => "bg-danger",
+        "Reserved" => "bg-warning text-dark",
+        "NeedsCleaning" => "bg-secondary",
+        _ => "bg-light text-dark"
+    };
+
+    public void Dispose() => AppState.OnChange -= HandleBranchChanged;
+}

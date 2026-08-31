@@ -1,0 +1,129 @@
+﻿@page "/order/{OrderId:int}"
+@using RestaurantPOS.Shared.DTOs.Payment
+@inject RestaurantPOS.Web.Services.ApiService ApiService
+
+<MudText Typo="Typo.h4" Class="mb-4" Style="color:#0a1f44; font-weight:700;">
+    Order #@OrderId
+</MudText>
+
+@if (order == null)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" md="7">
+            <MudPaper Class="pa-4" Elevation="2" Style="border-radius:12px;">
+                <div style="display:flex; gap:24px; margin-bottom:16px;">
+                    <MudText Typo="Typo.body1"><strong>Table:</strong> @order.TableName</MudText>
+                    <MudChip T="string" Color="@GetStatusColor(order.Status)" Size="Size.Small">@order.Status</MudChip>
+                </div>
+
+                <MudTable Items="order.Items" Dense="true" Hover="true" Elevation="0">
+                    <HeaderContent>
+                        <MudTh>Item</MudTh>
+                        <MudTh>Qty</MudTh>
+                        <MudTh Style="text-align:right;">Price</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Item">@context.MenuItemName</MudTd>
+                        <MudTd DataLabel="Qty">@context.Quantity</MudTd>
+                        <MudTd DataLabel="Price" Style="text-align:right;">@((context.UnitPrice * context.Quantity).ToString("N2"))</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="5">
+            <MudPaper Class="pa-4" Elevation="3" Style="border-radius:12px;">
+                @if (bill == null)
+                {
+                    <MudText Typo="Typo.body2" Class="mb-3">Bill has not been generated yet.</MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Warning" FullWidth="true"
+                               StartIcon="@Icons.Material.Filled.ReceiptLong"
+                               OnClick="GenerateBill">
+                        Generate Bill
+                    </MudButton>
+                }
+                else
+                {
+                    <MudText Typo="Typo.h6" Class="mb-3" Style="font-weight:700;">Bill Summary</MudText>
+
+                    <div style="display:flex; justify-content:space-between;" class="mb-1">
+                        <MudText Typo="Typo.body2">Sub Total</MudText>
+                        <MudText Typo="Typo.body2">@bill.CurrencyCode @bill.SubTotal.ToString("N2")</MudText>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;" class="mb-1">
+                        <MudText Typo="Typo.body2">VAT (@bill.TaxRatePercent%)</MudText>
+                        <MudText Typo="Typo.body2">@bill.CurrencyCode @bill.TaxAmount.ToString("N2")</MudText>
+                    </div>
+
+                    <MudDivider Class="my-2" />
+
+                    <div style="display:flex; justify-content:space-between;" class="mb-3">
+                        <MudText Typo="Typo.h6" Style="font-weight:700;">Total</MudText>
+                        <MudText Typo="Typo.h6" Style="font-weight:700;">@bill.CurrencyCode @bill.TotalAmount.ToString("N2")</MudText>
+                    </div>
+
+                    @if (order.Status != "Paid")
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Success" FullWidth="true"
+                                   StartIcon="@Icons.Material.Filled.Payments"
+                                   OnClick="PayCash">
+                            Pay with Cash
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Success" Icon="@Icons.Material.Filled.CheckCircle">
+                            Payment Completed
+                        </MudAlert>
+                    }
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public int OrderId { get; set; }
+
+    private RestaurantPOS.Shared.DTOs.Order.OrderDto? order;
+    private BillDto? bill;
+
+    protected override async Task OnInitializedAsync()
+    {
+        order = await ApiService.GetOrderAsync(OrderId);
+    }
+
+    private async Task GenerateBill()
+    {
+        bill = await ApiService.GenerateBillAsync(OrderId);
+    }
+
+    private async Task PayCash()
+    {
+        if (bill == null) return;
+
+        await ApiService.AddPaymentAsync(new CreatePaymentDto
+        {
+            BillId = bill.Id,
+            PaymentMethodTypeId = 1,
+            Amount = bill.TotalAmount
+        });
+
+        order = await ApiService.GetOrderAsync(OrderId);
+    }
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "Pending" => Color.Warning,
+        "InKitchen" => Color.Info,
+        "Ready" => Color.Tertiary,
+        "Served" => Color.Primary,
+        "Paid" => Color.Success,
+        "Cancelled" => Color.Error,
+        _ => Color.Default
+    };
+}

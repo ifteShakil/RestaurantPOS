@@ -1,0 +1,175 @@
+﻿@page "/admin/menu-items"
+@using RestaurantPOS.Shared.DTOs.Menu
+@inject RestaurantPOS.Web.Services.ApiService ApiService
+@inject RestaurantPOS.Web.Services.AppState AppState
+@implements IDisposable
+
+<h3>Menu Items — @AppState.CurrentBranchName</h3>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5>@(editingId == null ? "Add New Item" : "Edit Item")</h5>
+        <div class="row g-2">
+            <div class="col-md-3">
+                <input class="form-control" placeholder="Item Name" @bind="formName" />
+            </div>
+            <div class="col-md-3">
+                <input class="form-control" placeholder="Description (Optional)" @bind="formDescription" />
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" @bind="formCategoryId">
+                    <option value="0">-- Category --</option>
+                    @if (categories != null)
+                    {
+                        @foreach (var c in categories)
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="number" step="0.01" class="form-control" placeholder="Price" @bind="formPrice" />
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-primary w-100" @onclick="SaveItem">
+                    @(editingId == null ? "Add" : "Update")
+                </button>
+            </div>
+        </div>
+        @if (editingId != null)
+        {
+            <button class="btn btn-sm btn-secondary mt-2" @onclick="CancelEdit">Cancel</button>
+        }
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mt-2 mb-0 py-2">@errorMessage</div>
+        }
+    </div>
+</div>
+
+@if (menuItems == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table table-hover">
+        <thead>
+            <tr><th>Name</th><th>Category</th><th>Price</th><th>Available</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var item in menuItems)
+            {
+                <tr>
+                    <td>@item.Name</td>
+                    <td>@item.CategoryName</td>
+                    <td>@item.CurrencyCode @item.Price.ToString("N2")</td>
+                    <td>
+                        @if (item.IsAvailable)
+                        {
+                            <span class="badge bg-success">Yes</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">No</span>
+                        }
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => EditItem(item)">Edit</button>
+                        <button class="btn btn-sm btn-outline-danger ms-1" @onclick="() => DeleteItem(item.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<MenuItemDto>? menuItems;
+    private List<MenuCategoryDto>? categories;
+
+    private string formName = "";
+    private string formDescription = "";
+    private int formCategoryId = 0;
+    private decimal formPrice = 0;
+    private int? editingId = null;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppState.OnChange += HandleBranchChanged;
+        categories = await ApiService.GetCategoriesAsync();
+        await LoadItems();
+    }
+
+    private async Task LoadItems() => menuItems = await ApiService.GetMenuByBranchAsync(AppState.CurrentBranchId);
+
+    private async void HandleBranchChanged()
+    {
+        await LoadItems();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveItem()
+    {
+        errorMessage = null;
+        if (string.IsNullOrWhiteSpace(formName) || formCategoryId == 0)
+        {
+            errorMessage = "Name and Category are required.";
+            return;
+        }
+
+        var dto = new CreateMenuItemDto
+        {
+            Name = formName,
+            Description = formDescription,
+            BasePrice = formPrice,
+            CategoryId = formCategoryId
+        };
+
+        bool success;
+        if (editingId == null)
+            success = await ApiService.CreateMenuItemAsync(dto);
+        else
+            success = await ApiService.UpdateMenuItemAsync(editingId.Value, dto);
+
+        if (success)
+        {
+            ResetForm();
+            await LoadItems();
+        }
+        else
+        {
+            errorMessage = "There was a problem saving the item.";
+        }
+    }
+
+    private void EditItem(MenuItemDto item)
+    {
+        editingId = item.Id;
+        formName = item.Name;
+        formDescription = item.Description ?? "";
+        formCategoryId = item.CategoryId;
+        formPrice = item.Price;
+    }
+
+    private void CancelEdit() => ResetForm();
+
+    private async Task DeleteItem(int id)
+    {
+        var success = await ApiService.DeleteMenuItemAsync(id);
+        if (success) await LoadItems();
+    }
+
+    private void ResetForm()
+    {
+        editingId = null;
+        formName = "";
+        formDescription = "";
+        formCategoryId = 0;
+        formPrice = 0;
+    }
+
+    public void Dispose() => AppState.OnChange -= HandleBranchChanged;
+}

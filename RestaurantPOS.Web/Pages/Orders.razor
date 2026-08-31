@@ -1,0 +1,99 @@
+﻿@page "/orders"
+@using RestaurantPOS.Shared.DTOs.Order
+@inject RestaurantPOS.Web.Services.ApiService ApiService
+@inject RestaurantPOS.Web.Services.AppState AppState
+@inject NavigationManager Nav
+@implements IDisposable
+
+<div style="display:flex; justify-content:space-between; align-items:center;" class="mb-4">
+    <MudText Typo="Typo.h4" Style="color:#0a1f44; font-weight:700;">
+        Order List — @AppState.CurrentBranchName
+    </MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="GoToNewOrder">
+        New Order
+    </MudButton>
+</div>
+
+@if (orders == null)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+else if (!orders.Any())
+{
+    <MudAlert Severity="Severity.Info">No active orders.</MudAlert>
+}
+else
+{
+    <MudPaper Elevation="2" Style="border-radius:12px; overflow:hidden;">
+        <MudTable Items="orders" Hover="true" Elevation="0" Class="pa-2"
+                  RowStyle="cursor:pointer;" OnRowClick="@(async (TableRowClickEventArgs<OrderDto> args) => RowClicked(args))">
+            <HeaderContent>
+                <MudTh>Order #</MudTh>
+                <MudTh>Table</MudTh>
+                <MudTh>Waiter</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh Style="text-align:right;">Total</MudTh>
+                <MudTh Style="text-align:right;">Time</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Order #">
+                    <MudText Style="font-weight:600;">#@context.Id</MudText>
+                </MudTd>
+                <MudTd DataLabel="Table">@context.TableName</MudTd>
+                <MudTd DataLabel="Waiter">@(string.IsNullOrEmpty(context.WaiterName) ? "—" : context.WaiterName)</MudTd>
+                <MudTd DataLabel="Status">
+                    <MudChip T="string" Color="@GetStatusColor(context.Status)" Size="Size.Small">@context.Status</MudChip>
+                </MudTd>
+                <MudTd DataLabel="Total" Style="text-align:right; font-weight:600;">
+                    @AppState.CurrentCurrencyCode @context.TotalAmount.ToString("N2")
+                </MudTd>
+                <MudTd DataLabel="Time" Style="text-align:right;">
+                    @context.CreatedAt.ToLocalTime().ToString("HH:mm")
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+}
+
+@code {
+    private List<OrderDto>? orders;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppState.OnChange += HandleBranchChanged;
+        await LoadOrders();
+    }
+
+    private async Task LoadOrders()
+    {
+        orders = await ApiService.GetActiveOrdersAsync(AppState.CurrentBranchId);
+    }
+
+    private async void HandleBranchChanged()
+    {
+        await LoadOrders();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void GoToNewOrder() => Nav.NavigateTo("/order");
+
+    private void RowClicked(TableRowClickEventArgs<OrderDto> args)
+    {
+        var selectedOrder = args.Item;
+        Nav.NavigateTo($"/order/{selectedOrder.Id}");
+    }
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "Pending" => Color.Warning,
+        "InKitchen" => Color.Info,
+        "Ready" => Color.Tertiary,
+        "Served" => Color.Primary,
+        "Paid" => Color.Success,
+        "Cancelled" => Color.Error,
+        _ => Color.Default
+    };
+
+    public void Dispose() => AppState.OnChange -= HandleBranchChanged;
+}

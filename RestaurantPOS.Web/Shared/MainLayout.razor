@@ -1,0 +1,64 @@
+﻿@inherits LayoutComponentBase
+
+<MudThemeProvider Theme="_theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="2" Color="Color.Primary">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
+        <MudText Typo="Typo.h6" Class="ml-2" Style="font-weight:700;">RestaurantPOS</MudText>
+        <MudSpacer />
+        <div style="max-width:260px; width:100%;">
+            <BranchSelector />
+        </div>
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="2" Variant="DrawerVariant.Responsive" Color="Color.Primary">
+        <MudDrawerHeader Class="pb-2">
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h6" Style="line-height:1.2; font-weight:700;">RestaurantPOS</MudText>
+                <MudText Typo="Typo.caption" Style="opacity:0.7; letter-spacing:1px;">ESWATINI</MudText>
+            </MudStack>
+        </MudDrawerHeader>
+        <NavMenu />
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.False" Class="pa-6">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    private MudTheme _theme = new MudTheme()
+    {
+        PaletteLight = new PaletteLight()
+        {
+            Primary = "#0a1f44",           // Navy — AppBar, Drawer, প্রধান ব্র্যান্ড রঙ
+            Secondary = "#c89b3c",         // Gold accent — প্রিমিয়াম/রয়্যাল টাচ
+            Tertiary = "#2f6fed",
+            Success = "#1a7a4c",
+            Info = "#2f6fed",
+            Warning = "#d9822b",
+            Error = "#c62828",
+
+            AppbarBackground = "#0a1f44",
+            AppbarText = "#ffffff",
+
+            DrawerBackground = "#0a1f44",  // ⭐ AppBar-এর সাথে একই — cohesive লুক
+            DrawerText = "#e8e8f0",
+            DrawerIcon = "#c9cfe0",
+
+            Background = "#f4f6fa",
+            Surface = "#ffffff",
+
+            TextPrimary = "#1a1a2e",       // ⭐ হেডিং/টেক্সটে নেভির কাছাকাছি টোন
+        }
+    };
+}
