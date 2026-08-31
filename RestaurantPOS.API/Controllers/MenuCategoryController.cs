@@ -24,8 +24,20 @@ public class MenuCategoryController : ControllerBase
     public async Task<IActionResult> GetAll()
     {
         var categories = await _unitOfWork.MenuCategories.GetAllAsync();
+        var allMenuItems = await _unitOfWork.MenuItems.GetAllAsync();
+
         var ordered = categories.OrderBy(c => c.DisplayOrder).ToList();
-        return Ok(_mapper.Map<List<MenuCategoryDto>>(ordered));
+        var dtos = _mapper.Map<List<MenuCategoryDto>>(ordered);
+
+        // ⭐ প্রতিটা category-তে সঠিক item count বসানো
+        foreach (var dto in dtos)
+        {
+            dto.Items = allMenuItems.Where(m => m.CategoryId == dto.Id)
+                                      .Select(m => _mapper.Map<MenuItemDto>(m))
+                                      .ToList();
+        }
+
+        return Ok(dtos);
     }
 
     [HttpGet("{id}")]

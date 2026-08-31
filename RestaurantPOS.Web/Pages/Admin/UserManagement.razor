@@ -2,81 +2,82 @@
 @using RestaurantPOS.Shared.DTOs.User
 @inject RestaurantPOS.Web.Services.ApiService ApiService
 @inject RestaurantPOS.Web.Services.AppState AppState
+@inject ISnackbar Snackbar
 @implements IDisposable
 
-<h3>Staff — @AppState.CurrentBranchName</h3>
+<MudText Typo="Typo.h5" Class="mb-4" Style="color:#0a1f44; font-weight:700;">
+    Staff — @AppState.CurrentBranchName
+</MudText>
 
-<div class="card mb-4">
-    <div class="card-body">
-        <h5>Add New Staff</h5>
-        <div class="row g-2">
-            <div class="col-md-3">
-                <input class="form-control" placeholder="Full Name" @bind="formFullName" />
-            </div>
-            <div class="col-md-2">
-                <input class="form-control" placeholder="Username" @bind="formUsername" />
-            </div>
-            <div class="col-md-2">
-                <input type="password" class="form-control" placeholder="Password" @bind="formPassword" />
-            </div>
-            <div class="col-md-3">
-                <select class="form-select" @bind="formRole">
-                    <option value="">-- Role --</option>
-                    <option value="BranchManager">Branch Manager</option>
-                    <option value="Cashier">Cashier</option>
-                    <option value="Waiter">Waiter</option>
-                    <option value="KitchenStaff">Kitchen Staff</option>
-                    <option value="SuperAdmin">Super Admin</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <button class="btn btn-primary w-100" @onclick="AddUser">+ Add</button>
-            </div>
-        </div>
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="alert alert-danger mt-2 mb-0 py-2">@errorMessage</div>
-        }
+<MudPaper Class="pa-4 mb-4" Elevation="2" Style="border-radius:12px;">
+    <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight:600;">Add New Staff</MudText>
+
+    <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start;">
+        <MudTextField T="string" @bind-Value="formFullName" Label="Full Name" Variant="Variant.Outlined"
+                      Margin="Margin.Dense" Style="width:200px;" />
+        <MudTextField T="string" @bind-Value="formUsername" Label="Username" Variant="Variant.Outlined"
+                      Margin="Margin.Dense" Style="width:160px;" />
+        <MudTextField T="string" @bind-Value="formPassword" Label="Password" Variant="Variant.Outlined"
+                      InputType="InputType.Password" Margin="Margin.Dense" Style="width:160px;" />
+        <MudSelect T="string" @bind-Value="formRole" Label="Role" Variant="Variant.Outlined"
+                   Margin="Margin.Dense" Style="width:180px;">
+            <MudSelectItem T="string" Value="@("")">-- Role --</MudSelectItem>
+            <MudSelectItem T="string" Value="@("BranchManager")">Branch Manager</MudSelectItem>
+            <MudSelectItem T="string" Value="@("Cashier")">Cashier</MudSelectItem>
+            <MudSelectItem T="string" Value="@("Waiter")">Waiter</MudSelectItem>
+            <MudSelectItem T="string" Value="@("KitchenStaff")">Kitchen Staff</MudSelectItem>
+            <MudSelectItem T="string" Value="@("SuperAdmin")">Super Admin</MudSelectItem>
+        </MudSelect>
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="AddUser" Style="height:40px;">
+            Add
+        </MudButton>
     </div>
-</div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-3" Dense="true">@errorMessage</MudAlert>
+    }
+</MudPaper>
 
 @if (users == null)
 {
-    <p>Loading...</p>
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
 }
 else
 {
-    <table class="table table-hover">
-        <thead>
-            <tr><th>Name</th><th>Username</th><th>Role</th><th>Status</th><th></th></tr>
-        </thead>
-        <tbody>
-            @foreach (var u in users)
-            {
-                <tr>
-                    <td>@u.FullName</td>
-                    <td>@u.Username</td>
-                    <td><span class="badge bg-info text-dark">@u.Role</span></td>
-                    <td>
-                        @if (u.IsActive)
-                        {
-                            <span class="badge bg-success">Active</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-secondary">Inactive</span>
-                        }
-                    </td>
-                    <td>
-                        @if (u.IsActive)
-                        {
-                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeactivateUser(u.Id)">Deactivate</button>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <MudPaper Elevation="2" Style="border-radius:12px; overflow:hidden;">
+        <MudTable Items="users" Hover="true" Dense="true" Elevation="0" Class="pa-2"
+                  Height="420px" FixedHeader="true">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Username</MudTh>
+                <MudTh>Role</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh Style="text-align:right;">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name"><MudText Typo="Typo.body2" Style="font-weight:600;">@context.FullName</MudText></MudTd>
+                <MudTd DataLabel="Username"><MudText Typo="Typo.body2">@context.Username</MudText></MudTd>
+                <MudTd DataLabel="Role">
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info">@context.Role</MudChip>
+                </MudTd>
+                <MudTd DataLabel="Status">
+                    <MudChip T="string" Size="Size.Small" Color="@(context.IsActive? Color.Success: Color.Default)">
+                        @(context.IsActive ? "Active" : "Inactive")
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Actions" Style="text-align:right;">
+                    @if (context.IsActive)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Block" Size="Size.Small" Color="Color.Error"
+                                       OnClick="() => DeactivateUser(context.Id)" />
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
 }
 
 @code {
@@ -124,6 +125,7 @@ else
         var success = await ApiService.CreateUserAsync(dto);
         if (success)
         {
+            Snackbar.Add("Staff member added!", Severity.Success);
             formFullName = ""; formUsername = ""; formPassword = ""; formRole = "";
             await LoadUsers();
         }
@@ -136,7 +138,11 @@ else
     private async Task DeactivateUser(int id)
     {
         var success = await ApiService.DeactivateUserAsync(id);
-        if (success) await LoadUsers();
+        if (success)
+        {
+            Snackbar.Add("Staff deactivated.", Severity.Info);
+            await LoadUsers();
+        }
     }
 
     public void Dispose() => AppState.OnChange -= HandleBranchChanged;

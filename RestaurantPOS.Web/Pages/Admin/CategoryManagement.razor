@@ -1,61 +1,76 @@
 ﻿@page "/admin/categories"
 @using RestaurantPOS.Shared.DTOs.Menu
 @inject RestaurantPOS.Web.Services.ApiService ApiService
+@inject ISnackbar Snackbar
 
-<h3>Menu Categories</h3>
+<MudText Typo="Typo.h5" Class="mb-4" Style="color:#0a1f44; font-weight:700;">
+    Menu Categories
+</MudText>
 
-<div class="card mb-4">
-    <div class="card-body">
-        <h5>@(editingId == null ? "Add New Category" : "Edit Category")</h5>
-        <div class="row g-2">
-            <div class="col-md-6">
-                <input class="form-control" placeholder="Category Name (e.g., Main Course)" @bind="formName" />
-            </div>
-            <div class="col-md-3">
-                <input type="number" class="form-control" placeholder="Display Order" @bind="formDisplayOrder" />
-            </div>
-            <div class="col-md-3">
-                <button class="btn btn-primary" @onclick="SaveCategory">
-                    @(editingId == null ? "Add" : "Update")
-                </button>
-                @if (editingId != null)
-                {
-                    <button class="btn btn-secondary ms-1" @onclick="CancelEdit">Cancel</button>
-                }
-            </div>
-        </div>
-        @if (!string.IsNullOrEmpty(errorMessage))
+<MudPaper Class="pa-4 mb-4" Elevation="2" Style="border-radius:12px;">
+    <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight:600;">
+        @(editingId == null ? "Add New Category" : "Edit Category")
+    </MudText>
+
+    <div class="d-flex align-items-end gap-3 flex-wrap">
+        <MudTextField T="string" @bind-Value="formName" Label="Category Name" Variant="Variant.Outlined"
+                      Margin="Margin.Dense" Placeholder="e.g., Main Course" Immediate="true"
+                      Style="width:280px;" />
+
+        <MudNumericField T="int" @bind-Value="formDisplayOrder" Label="Display Order"
+                         Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" HideSpinButtons="true"
+                         Style="width:140px;" />
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@(editingId == null ? Icons.Material.Filled.Add : Icons.Material.Filled.Save)"
+                   OnClick="SaveCategory" Style="height:40px;">
+            @(editingId == null ? "Add" : "Update")
+        </MudButton>
+
+        @if (editingId != null)
         {
-            <div class="alert alert-danger mt-2 mb-0 py-2">@errorMessage</div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Default" OnClick="CancelEdit" Style="height:40px;" />
         }
     </div>
-</div>
 
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-3" Dense="true">@errorMessage</MudAlert>
+    }
+</MudPaper>
 @if (categories == null)
 {
-    <p>Loading...</p>
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
 }
 else
 {
-    <table class="table table-hover">
-        <thead>
-            <tr><th>Name</th><th>Display Order</th><th>Items</th><th></th></tr>
-        </thead>
-        <tbody>
-            @foreach (var c in categories)
-            {
-                <tr>
-                    <td>@c.Name</td>
-                    <td>@c.DisplayOrder</td>
-                    <td>@c.Items.Count</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary" @onclick="() => EditCategory(c)">Edit</button>
-                        <button class="btn btn-sm btn-outline-danger ms-1" @onclick="() => DeleteCategory(c.Id)">Delete</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <MudPaper Elevation="2" Style="border-radius:12px; overflow:hidden;">
+        <MudTable Items="categories.OrderBy(c => c.DisplayOrder)" Hover="true" Dense="true"
+                  Elevation="0" Class="pa-2"
+                  Height="420px" FixedHeader="true">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Display Order</MudTh>
+                <MudTh>Items</MudTh>
+                <MudTh Style="text-align:right;">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name"><MudText Typo="Typo.body2" Style="font-weight:600;">@context.Name</MudText></MudTd>
+                <MudTd DataLabel="Display Order"><MudText Typo="Typo.body2">@context.DisplayOrder</MudText></MudTd>
+                <MudTd DataLabel="Items">
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default">@context.Items.Count items</MudChip>
+                </MudTd>
+                <MudTd DataLabel="Actions" Style="text-align:right;">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                                   OnClick="() => EditCategory(context)" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                   OnClick="() => DeleteCategory(context.Id)" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+
+   
 }
 
 @code {
@@ -74,26 +89,24 @@ else
         errorMessage = null;
         if (string.IsNullOrWhiteSpace(formName))
         {
-            errorMessage = "Category Name is required.";
+            errorMessage = "Category name is required.";
             return;
         }
 
         var dto = new CreateMenuCategoryDto { Name = formName, DisplayOrder = formDisplayOrder };
-        bool success;
-
-        if (editingId == null)
-            success = await ApiService.CreateCategoryAsync(dto);
-        else
-            success = await ApiService.UpdateCategoryAsync(editingId.Value, dto);
+        bool success = editingId == null
+            ? await ApiService.CreateCategoryAsync(dto)
+            : await ApiService.UpdateCategoryAsync(editingId.Value, dto);
 
         if (success)
         {
+            Snackbar.Add(editingId == null ? "Category added!" : "Category updated!", Severity.Success);
             ResetForm();
             await LoadCategories();
         }
         else
         {
-            errorMessage = "There was a problem saving the category.";
+            errorMessage = "Failed to save.";
         }
     }
 

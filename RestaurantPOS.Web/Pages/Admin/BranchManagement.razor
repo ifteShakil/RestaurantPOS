@@ -1,100 +1,97 @@
-﻿@* RestaurantPOS.Web/Pages/Admin/BranchManagement.razor *@
-@page "/admin/branches"
+﻿@page "/admin/branches"
 @using RestaurantPOS.Shared.DTOs.Branch
 @inject RestaurantPOS.Web.Services.ApiService ApiService
+@inject ISnackbar Snackbar
 
-<h3>Branches</h3>
+<MudText Typo="Typo.h4" Class="mb-4" Style="color:#0a1f44; font-weight:700;">
+    Branches
+</MudText>
 
-<div class="card mb-4">
-    <div class="card-body">
-        <h5>@(editingId == null ? "Add New Branch" : "Edit Branch")</h5>
-        <div class="row g-2">
-            <div class="col-md-3">
-                <input class="form-control" placeholder="Branch Name" @bind="formName" />
-            </div>
-            <div class="col-md-2">
-                <input class="form-control" placeholder="Code (e.g., MBB-01)" @bind="formCode" />
-            </div>
-            <div class="col-md-2">
-                <input class="form-control" placeholder="Country Code (e.g., SZ)" @bind="formCountryCode" />
-            </div>
-            <div class="col-md-2">
-                <input class="form-control" placeholder="Currency (e.g., SZL)" @bind="formCurrencyCode" />
-            </div>
-            <div class="col-md-1">
-                <input class="form-control" placeholder="Symbol" @bind="formCurrencySymbol" />
-            </div>
-            <div class="col-md-2">
-                <input type="number" step="0.01" class="form-control" placeholder="Tax %" @bind="formTaxRate" />
-            </div>
-        </div>
-        <div class="row g-2 mt-1">
-            <div class="col-md-3">
-                <input class="form-control" placeholder="Timezone (e.g., Africa/Mbabane)" @bind="formTimeZone" />
-            </div>
-            <div class="col-md-2">
-                <input class="form-control" placeholder="Locale (e.g., en-SZ)" @bind="formLocale" />
-            </div>
-            <div class="col-md-4">
-                <input class="form-control" placeholder="Address" @bind="formAddress" />
-            </div>
-            <div class="col-md-2">
-                <input class="form-control" placeholder="Phone (optional)" @bind="formPhone" />
-            </div>
-            <div class="col-md-1">
-                <button class="btn btn-primary w-100" @onclick="SaveBranch">
-                    @(editingId == null ? "Add" : "Update")
-                </button>
-            </div>
-        </div>
+<MudPaper Class="pa-4 mb-4" Elevation="2" Style="border-radius:12px;">
+    <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight:600;">
+        @(editingId == null ? "Add New Branch" : "Edit Branch")
+    </MudText>
+
+    <div style="display:flex; gap:12px; flex-wrap:wrap;" class="mb-3">
+        <MudTextField T="string" @bind-Value="formName" Label="Branch Name" Variant="Variant.Outlined"
+                      Margin="Margin.Dense" Style="width:220px;" />
+        <MudTextField T="string" @bind-Value="formCode" Label="Code" Variant="Variant.Outlined"
+                      Margin="Margin.Dense" Placeholder="e.g., MBB-01" Style="width:140px;" />
+        <MudTextField T="string" @bind-Value="formCountryCode" Label="Country Code" Variant="Variant.Outlined"
+                      Margin="Margin.Dense" Placeholder="e.g., SZ" Style="width:130px;" />
+        <MudTextField T="string" @bind-Value="formCurrencyCode" Label="Currency" Variant="Variant.Outlined"
+                      Margin="Margin.Dense" Placeholder="e.g., SZL" Style="width:120px;" />
+        <MudTextField T="string" @bind-Value="formCurrencySymbol" Label="Symbol" Variant="Variant.Outlined"
+                      Margin="Margin.Dense" Style="width:90px;" />
+        <MudNumericField T="decimal" @bind-Value="formTaxRate" Label="Tax %" Variant="Variant.Outlined"
+                         Margin="Margin.Dense" HideSpinButtons="true" Format="N2" Style="width:110px;" />
+    </div>
+
+    <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start;">
+        <MudTextField T="string" @bind-Value="formTimeZone" Label="Timezone" Variant="Variant.Outlined"
+                      Margin="Margin.Dense" Placeholder="e.g., Africa/Mbabane" Style="width:220px;" />
+        <MudTextField T="string" @bind-Value="formLocale" Label="Locale" Variant="Variant.Outlined"
+                      Margin="Margin.Dense" Placeholder="e.g., en-SZ" Style="width:120px;" />
+        <MudTextField T="string" @bind-Value="formAddress" Label="Address" Variant="Variant.Outlined"
+                      Margin="Margin.Dense" Style="width:280px;" />
+        <MudTextField T="string" @bind-Value="formPhone" Label="Phone (optional)" Variant="Variant.Outlined"
+                      Margin="Margin.Dense" Style="width:160px;" />
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@(editingId == null ? Icons.Material.Filled.Add : Icons.Material.Filled.Save)"
+                   OnClick="SaveBranch" Style="height:40px;">
+            @(editingId == null ? "Add" : "Update")
+        </MudButton>
         @if (editingId != null)
         {
-            <button class="btn btn-sm btn-secondary mt-2" @onclick="CancelEdit">Cancel</button>
-        }
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="alert alert-danger mt-2 mb-0 py-2">@errorMessage</div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Default" OnClick="CancelEdit" Style="height:40px;" />
         }
     </div>
-</div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-3" Dense="true">@errorMessage</MudAlert>
+    }
+</MudPaper>
 
 @if (branches == null)
 {
-    <p>Loading...</p>
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
 }
 else
 {
-    <table class="table table-hover">
-        <thead>
-            <tr><th>Name</th><th>Code</th><th>Country</th><th>Currency</th><th>Tax %</th><th>Active</th><th></th></tr>
-        </thead>
-        <tbody>
-            @foreach (var b in branches)
-            {
-                <tr>
-                    <td>@b.Name</td>
-                    <td>@b.Code</td>
-                    <td>@b.CountryCode</td>
-                    <td>@b.CurrencyCode</td>
-                    <td>@b.TaxRatePercent%</td>
-                    <td>
-                        @if (b.IsActive)
-                        {
-                            <span class="badge bg-success">Active</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-secondary">Inactive</span>
-                        }
-                    </td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary" @onclick="() => EditBranch(b)">Edit</button>
-                        <button class="btn btn-sm btn-outline-danger ms-1" @onclick="() => DeactivateBranch(b.Id)">Deactivate</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <MudPaper Elevation="2" Style="border-radius:12px; overflow:hidden;">
+        <MudTable Items="branches" Hover="true" Dense="true" Elevation="0" Class="pa-2"
+                  Height="420px" FixedHeader="true">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Code</MudTh>
+                <MudTh>Country</MudTh>
+                <MudTh>Currency</MudTh>
+                <MudTh Style="text-align:right;">Tax %</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh Style="text-align:right;">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name"><MudText Typo="Typo.body2" Style="font-weight:600;">@context.Name</MudText></MudTd>
+                <MudTd DataLabel="Code"><MudText Typo="Typo.body2">@context.Code</MudText></MudTd>
+                <MudTd DataLabel="Country"><MudText Typo="Typo.body2">@context.CountryCode</MudText></MudTd>
+                <MudTd DataLabel="Currency"><MudText Typo="Typo.body2">@context.CurrencyCode</MudText></MudTd>
+                <MudTd DataLabel="Tax %" Style="text-align:right;"><MudText Typo="Typo.body2">@context.TaxRatePercent%</MudText></MudTd>
+                <MudTd DataLabel="Status">
+                    <MudChip T="string" Size="Size.Small" Color="@(context.IsActive? Color.Success: Color.Default)">
+                        @(context.IsActive ? "Active" : "Inactive")
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Actions" Style="text-align:right;">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                                   OnClick="() => EditBranch(context)" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Block" Size="Size.Small" Color="Color.Error"
+                                   OnClick="() => DeactivateBranch(context.Id)" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
 }
 
 @code {
@@ -140,14 +137,13 @@ else
             Phone = string.IsNullOrWhiteSpace(formPhone) ? null : formPhone
         };
 
-        bool success;
-        if (editingId == null)
-            success = await ApiService.CreateBranchAsync(dto);
-        else
-            success = await ApiService.UpdateBranchAsync(editingId.Value, dto);
+        bool success = editingId == null
+            ? await ApiService.CreateBranchAsync(dto)
+            : await ApiService.UpdateBranchAsync(editingId.Value, dto);
 
         if (success)
         {
+            Snackbar.Add(editingId == null ? "Branch added!" : "Branch updated!", Severity.Success);
             ResetForm();
             await LoadBranches();
         }
@@ -177,7 +173,11 @@ else
     private async Task DeactivateBranch(int id)
     {
         var success = await ApiService.DeactivateBranchAsync(id);
-        if (success) await LoadBranches();
+        if (success)
+        {
+            Snackbar.Add("Branch deactivated.", Severity.Info);
+            await LoadBranches();
+        }
     }
 
     private void ResetForm()

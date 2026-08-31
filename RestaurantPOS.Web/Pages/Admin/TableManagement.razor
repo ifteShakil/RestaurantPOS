@@ -2,61 +2,65 @@
 @using RestaurantPOS.Shared.DTOs.Table
 @inject RestaurantPOS.Web.Services.ApiService ApiService
 @inject RestaurantPOS.Web.Services.AppState AppState
+@inject ISnackbar Snackbar
 @implements IDisposable
 
-<h3>Tables — @AppState.CurrentBranchName</h3>
+<MudText Typo="Typo.h4" Class="mb-4" Style="color:#0a1f44; font-weight:700;">
+    Tables — @AppState.CurrentBranchName
+</MudText>
 
-<div class="card mb-4">
-    <div class="card-body">
-        <h5>Add new Table</h5>
-        <div class="row g-2">
-            <div class="col-md-4">
-                <input class="form-control" placeholder="Table Name (e.g., Table 5)" @bind="formName" />
-            </div>
-            <div class="col-md-3">
-                <input type="number" class="form-control" placeholder="Capacity (Number of Seats)" @bind="formCapacity" />
-            </div>
-            <div class="col-md-3">
-                <button class="btn btn-primary w-100" @onclick="AddTable">+ Add</button>
-            </div>
-        </div>
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="alert alert-danger mt-2 mb-0 py-2">@errorMessage</div>
-        }
+<MudPaper Class="pa-4 mb-4" Elevation="2" Style="border-radius:12px;">
+    <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight:600;">Add New Table</MudText>
+
+    <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start;">
+        <MudTextField T="string" @bind-Value="formName" Label="Table Name" Variant="Variant.Outlined"
+                      Margin="Margin.Dense" Placeholder="e.g., Table 5" Style="width:200px;" />
+        <MudNumericField T="int" @bind-Value="formCapacity" Label="Capacity (seats)" Variant="Variant.Outlined"
+                         Margin="Margin.Dense" HideSpinButtons="true" Min="1" Style="width:160px;" />
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="AddTable" Style="height:40px;">
+            Add
+        </MudButton>
     </div>
-</div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-3" Dense="true">@errorMessage</MudAlert>
+    }
+</MudPaper>
 
 @if (tables == null)
 {
-    <p>Loading...</p>
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
 }
 else
 {
-    <div class="row">
+    <MudGrid>
         @foreach (var t in tables)
         {
-            <div class="col-md-3 mb-3">
-                <div class="card @GetStatusCardClass(t.Status)">
-                    <div class="card-body">
-                        <h5 class="card-title">@t.Name</h5>
-                        <p class="mb-1">Capacity: @t.Capacity</p>
-                        <span class="badge @GetStatusBadgeClass(t.Status)">@t.Status</span>
-
-                        <div class="mt-3">
-                            <select class="form-select form-select-sm" @onchange="(e) => ChangeStatus(t.Id, e.Value!.ToString()!)">
-                                <option value="Available" selected="@(t.Status == "Available")">Available</option>
-                                <option value="Occupied" selected="@(t.Status == "Occupied")">Occupied</option>
-                                <option value="Reserved" selected="@(t.Status == "Reserved")">Reserved</option>
-                                <option value="NeedsCleaning" selected="@(t.Status == "NeedsCleaning")">Needs Cleaning</option>
-                            </select>
-                        </div>
-                        <button class="btn btn-sm btn-outline-danger mt-2 w-100" @onclick="() => DeleteTable(t.Id)">Delete</button>
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-4" Elevation="2" Style="@GetCardStyle(t.Status)">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <MudText Typo="Typo.h6" Style="font-weight:700;">@t.Name</MudText>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                       OnClick="() => DeleteTable(t.Id)" />
                     </div>
-                </div>
-            </div>
+                    <MudText Typo="Typo.body2" Class="mb-2" Style="opacity:0.7;">Seats: @t.Capacity</MudText>
+
+                    <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(t.Status)" Class="mb-3">@t.Status</MudChip>
+
+                    <MudSelect T="string" Value="t.Status" ValueChanged="(val) => ChangeStatus(t.Id, val)"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                        <MudSelectItem T="string" Value="@("Available")">Available</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("Occupied")">Occupied</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("Reserved")">Reserved</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("NeedsCleaning")">Needs Cleaning</MudSelectItem>
+                    </MudSelect>
+                </MudPaper>
+            </MudItem>
         }
-    </div>
+    </MudGrid>
 }
 
 @code {
@@ -84,7 +88,7 @@ else
         errorMessage = null;
         if (string.IsNullOrWhiteSpace(formName) || formCapacity <= 0)
         {
-            errorMessage = "Table Name and valid Capacity are required.";
+            errorMessage = "Table name and valid capacity are required.";
             return;
         }
 
@@ -98,44 +102,57 @@ else
         var success = await ApiService.CreateTableAsync(dto);
         if (success)
         {
+            Snackbar.Add("Table added!", Severity.Success);
             formName = "";
             formCapacity = 4;
             await LoadTables();
         }
         else
         {
-            errorMessage = "There was a problem saving the table.";
+            errorMessage = "Failed to save.";
         }
     }
 
     private async Task ChangeStatus(int tableId, string newStatus)
     {
         var success = await ApiService.UpdateTableStatusAsync(tableId, newStatus);
-        if (success) await LoadTables();
+        if (success)
+        {
+            Snackbar.Add("Table status updated.", Severity.Info);
+            await LoadTables();
+        }
     }
 
     private async Task DeleteTable(int id)
     {
         var success = await ApiService.DeleteTableAsync(id);
-        if (success) await LoadTables();
+        if (success)
+        {
+            Snackbar.Add("Table deleted.", Severity.Info);
+            await LoadTables();
+        }
     }
 
-    private string GetStatusCardClass(string status) => status switch
+    private string GetCardStyle(string status)
     {
-        "Available" => "border-success",
-        "Occupied" => "border-danger",
-        "Reserved" => "border-warning",
-        "NeedsCleaning" => "border-secondary",
-        _ => ""
-    };
+        var borderColor = status switch
+        {
+            "Available" => "#1a7a4c",
+            "Occupied" => "#c62828",
+            "Reserved" => "#d9822b",
+            "NeedsCleaning" => "#757575",
+            _ => "#e0e0e0"
+        };
+        return $"border-radius:12px; border-left:5px solid {borderColor};";
+    }
 
-    private string GetStatusBadgeClass(string status) => status switch
+    private Color GetStatusColor(string status) => status switch
     {
-        "Available" => "bg-success",
-        "Occupied" => "bg-danger",
-        "Reserved" => "bg-warning text-dark",
-        "NeedsCleaning" => "bg-secondary",
-        _ => "bg-light text-dark"
+        "Available" => Color.Success,
+        "Occupied" => Color.Error,
+        "Reserved" => Color.Warning,
+        "NeedsCleaning" => Color.Default,
+        _ => Color.Default
     };
 
     public void Dispose() => AppState.OnChange -= HandleBranchChanged;

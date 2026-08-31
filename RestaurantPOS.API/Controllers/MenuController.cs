@@ -48,6 +48,15 @@ public class MenuController : ControllerBase
         return Ok(dtos);
     }
 
+    [HttpGet]
+    public async Task<IActionResult> GetAll()
+    {
+        var categories = await _unitOfWork.MenuCategories.GetAllAsync();
+        
+        var ordered = categories.OrderBy(c => c.DisplayOrder).ToList();
+        return Ok(_mapper.Map<List<MenuCategoryDto>>(ordered));
+    }
+
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {

@@ -4,85 +4,138 @@
 @inject RestaurantPOS.Web.Services.AppState AppState
 @implements IDisposable
 
-<h3>Menu Items — @AppState.CurrentBranchName</h3>
+<MudText Typo="Typo.h5" Class="mb-4" Style="color:#0a1f44; font-weight:700;">
+    Menu Items — @AppState.CurrentBranchName
+</MudText>
 
-<div class="card mb-4">
-    <div class="card-body">
-        <h5>@(editingId == null ? "Add New Item" : "Edit Item")</h5>
-        <div class="row g-2">
-            <div class="col-md-3">
-                <input class="form-control" placeholder="Item Name" @bind="formName" />
-            </div>
-            <div class="col-md-3">
-                <input class="form-control" placeholder="Description (Optional)" @bind="formDescription" />
-            </div>
-            <div class="col-md-2">
-                <select class="form-select" @bind="formCategoryId">
-                    <option value="0">-- Category --</option>
-                    @if (categories != null)
+@* <MudPaper Class="pa-4 mb-4" Elevation="2" Style="border-radius:12px;">
+    <MudText Typo="Typo.h6" Class="mb-3" Style="font-weight:600;">
+        @(editingId == null ? "Add New Item" : "Edit Item")
+    </MudText>
+
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="3">
+            <MudTextField T="string" @bind-Value="formName" Label="Item Name" Variant="Variant.Outlined" Immediate="true" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudTextField T="string" @bind-Value="formDescription" Label="Description (optional)" Variant="Variant.Outlined" />
+        </MudItem>
+        <MudItem xs="6" sm="4" md="2">
+            <MudSelect T="int" @bind-Value="formCategoryId" Label="Category" Variant="Variant.Outlined">
+                <MudSelectItem T="int" Value="0">-- Category --</MudSelectItem>
+                @if (categories != null)
+                {
+                    @foreach (var c in categories)
                     {
-                        @foreach (var c in categories)
-                        {
-                            <option value="@c.Id">@c.Name</option>
-                        }
+                        <MudSelectItem T="int" Value="@c.Id">@c.Name</MudSelectItem>
                     }
-                </select>
-            </div>
-            <div class="col-md-2">
-                <input type="number" step="0.01" class="form-control" placeholder="Price" @bind="formPrice" />
-            </div>
-            <div class="col-md-2">
-                <button class="btn btn-primary w-100" @onclick="SaveItem">
-                    @(editingId == null ? "Add" : "Update")
-                </button>
-            </div>
-        </div>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="6" sm="4" md="2">
+            <MudNumericField T="decimal" @bind-Value="formPrice" Label="Price" Variant="Variant.Outlined" Format="N2" Min="0" />
+        </MudItem>
+        <MudItem xs="12" sm="4" md="2" Class="d-flex align-center" Style="gap:8px;">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                       StartIcon="@(editingId == null ? Icons.Material.Filled.Add : Icons.Material.Filled.Save)"
+                       OnClick="SaveItem">
+                @(editingId == null ? "Add" : "Update")
+            </MudButton>
+            @if (editingId != null)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Default" OnClick="CancelEdit" />
+            }
+        </MudItem>
+    </MudGrid>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-3" Dense="true">@errorMessage</MudAlert>
+    }
+</MudPaper>
+ *@
+
+<MudPaper Class="pa-4 mb-4" Elevation="2" Style="border-radius:12px;">
+    <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight:600;">
+        @(editingId == null ? "Add New Item" : "Edit Item")
+    </MudText>
+
+    <div style="display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+        <MudTextField T="string" @bind-Value="formName" Label="Item Name" Variant="Variant.Outlined"
+                      Margin="Margin.Dense" Immediate="true" Style="width:220px;" />
+
+        <MudTextField T="string" @bind-Value="formDescription" Label="Description (optional)" Variant="Variant.Outlined"
+                      Margin="Margin.Dense" Style="width:240px;" />
+
+        <MudSelect T="int" @bind-Value="formCategoryId" Label="Category" Variant="Variant.Outlined"
+                   Margin="Margin.Dense" Style="width:180px;">
+            <MudSelectItem T="int" Value="0">-- Category --</MudSelectItem>
+            @if (categories != null)
+            {
+                @foreach (var c in categories)
+                {
+                    <MudSelectItem T="int" Value="@c.Id">@c.Name</MudSelectItem>
+                }
+            }
+        </MudSelect>
+
+        <MudNumericField T="decimal" @bind-Value="formPrice" Label="Price" Variant="Variant.Outlined"
+                         Margin="Margin.Dense" Format="N2" Min="0" HideSpinButtons="true" Style="width:130px;" />
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@(editingId == null ? Icons.Material.Filled.Add : Icons.Material.Filled.Save)"
+                   OnClick="SaveItem" Style="height:40px;">
+            @(editingId == null ? "Add" : "Update")
+        </MudButton>
+
         @if (editingId != null)
         {
-            <button class="btn btn-sm btn-secondary mt-2" @onclick="CancelEdit">Cancel</button>
-        }
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="alert alert-danger mt-2 mb-0 py-2">@errorMessage</div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Default" OnClick="CancelEdit" Style="height:40px;" />
         }
     </div>
-</div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-3" Dense="true">@errorMessage</MudAlert>
+    }
+</MudPaper>
+
 
 @if (menuItems == null)
 {
-    <p>Loading...</p>
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
 }
 else
 {
-    <table class="table table-hover">
-        <thead>
-            <tr><th>Name</th><th>Category</th><th>Price</th><th>Available</th><th></th></tr>
-        </thead>
-        <tbody>
-            @foreach (var item in menuItems)
-            {
-                <tr>
-                    <td>@item.Name</td>
-                    <td>@item.CategoryName</td>
-                    <td>@item.CurrencyCode @item.Price.ToString("N2")</td>
-                    <td>
-                        @if (item.IsAvailable)
-                        {
-                            <span class="badge bg-success">Yes</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-secondary">No</span>
-                        }
-                    </td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary" @onclick="() => EditItem(item)">Edit</button>
-                        <button class="btn btn-sm btn-outline-danger ms-1" @onclick="() => DeleteItem(item.Id)">Delete</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <MudPaper Elevation="2" Style="border-radius:12px; overflow:hidden;">
+        <MudTable Items="menuItems" Hover="true" Dense="true" Elevation="0" Class="pa-2" Height="420px" FixedHeader="true">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Category</MudTh>
+                <MudTh Style="text-align:right;">Price</MudTh>
+                <MudTh>Available</MudTh>
+                <MudTh Style="text-align:right;">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name"><MudText Style="font-weight:600;">@context.Name</MudText></MudTd>
+                <MudTd DataLabel="Category">@context.CategoryName</MudTd>
+                <MudTd DataLabel="Price" Style="text-align:right; font-weight:600;">
+                    @context.CurrencyCode @context.Price.ToString("N2")
+                </MudTd>
+                <MudTd DataLabel="Available">
+                    <MudChip T="string" Size="Size.Small" Color="@(context.IsAvailable? Color.Success: Color.Default)">
+                        @(context.IsAvailable ? "Yes" : "No")
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Actions" Style="text-align:right;">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                                   OnClick="() => EditItem(context)" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                   OnClick="() => DeleteItem(context.Id)" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
 }
 
 @code {
@@ -128,11 +181,9 @@ else
             CategoryId = formCategoryId
         };
 
-        bool success;
-        if (editingId == null)
-            success = await ApiService.CreateMenuItemAsync(dto);
-        else
-            success = await ApiService.UpdateMenuItemAsync(editingId.Value, dto);
+        bool success = editingId == null
+            ? await ApiService.CreateMenuItemAsync(dto)
+            : await ApiService.UpdateMenuItemAsync(editingId.Value, dto);
 
         if (success)
         {
@@ -141,7 +192,7 @@ else
         }
         else
         {
-            errorMessage = "There was a problem saving the item.";
+            errorMessage = "Failed to save.";
         }
     }
 
