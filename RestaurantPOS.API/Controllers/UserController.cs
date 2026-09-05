@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -10,6 +11,7 @@ namespace RestaurantPOS.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class UserController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -39,6 +41,7 @@ public class UserController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "SuperAdmin")]
     public async Task<IActionResult> Create(CreateUserDto dto)
     {
         if (!Enum.TryParse<UserRole>(dto.Role, true, out var role))
@@ -70,6 +73,7 @@ public class UserController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "SuperAdmin")]
     public async Task<IActionResult> Deactivate(int id)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(id);

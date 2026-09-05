@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using RestaurantPOS.Core.Interfaces;
 using RestaurantPOS.Shared.DTOs.Dashboard;
@@ -7,6 +8,7 @@ namespace RestaurantPOS.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class DashboardController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;

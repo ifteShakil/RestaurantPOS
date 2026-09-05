@@ -2,6 +2,7 @@
 @using RestaurantPOS.Shared.DTOs.Menu
 @using RestaurantPOS.Shared.DTOs.Order
 @using RestaurantPOS.Shared.DTOs.Table
+@inject RestaurantPOS.Web.Services.AuthState AuthState
 @inject RestaurantPOS.Web.Services.ApiService ApiService
 @inject RestaurantPOS.Web.Services.AppState AppState
 @inject NavigationManager Nav
@@ -140,8 +141,8 @@ else
 }
 
 @code {
-    private const int WaiterId = 1;
     private int BranchId => AppState.CurrentBranchId;
+    private int WaiterId => AuthState.CurrentUser?.Id ?? 0;
 
     private List<MenuItemDto>? menuItems;
     private List<MenuItemDto> filteredItems = new();

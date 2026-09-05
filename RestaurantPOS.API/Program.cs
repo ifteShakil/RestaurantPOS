@@ -1,12 +1,13 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using RestaurantPOS.API.MappingProfiles;
+using RestaurantPOS.API.Services;
 using RestaurantPOS.Core.Interfaces;
 using RestaurantPOS.Core.Models;
 using RestaurantPOS.Infrastructure;
 using RestaurantPOS.Infrastructure.Repositories;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +25,7 @@ builder.Services.AddAutoMapper(typeof(AppMappingProfile));
 // Bind JWT Settings
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>()!;
 builder.Services.AddSingleton(jwtSettings);
+builder.Services.AddSingleton<TokenService>();
 
 // Add JWT Authentication 
 builder.Services.AddAuthentication(options =>

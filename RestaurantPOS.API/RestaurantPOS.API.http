@@ -1,5 +1,26 @@
 ﻿@RestaurantPOS.API_HostAddress = https://localhost:7023
 
+POST {{RestaurantPOS.API_HostAddress}}/api/user
+Content-Type: application/json
+Accept: application/json
+{
+  "fullName": "Admin User",
+  "username": "admin",
+  "password": "Admin@123",
+  "role": "SuperAdmin",
+  "branchId": null
+}
+###
+
+POST {{RestaurantPOS.API_HostAddress}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+{
+  "username": "admin",
+  "password": "Admin@123"
+}
+###
+
 ### 1. Get All Branch 
 GET {{RestaurantPOS.API_HostAddress}}/api/branch
 Accept: application/json

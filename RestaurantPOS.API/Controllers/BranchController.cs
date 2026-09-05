@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using RestaurantPOS.Core.Entities;
@@ -9,6 +10,7 @@ namespace RestaurantPOS.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class BranchController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -43,6 +45,7 @@ public class BranchController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "SuperAdmin")]
     public async Task<IActionResult> Create(CreateBranchDto dto)
     {
         var existing = await _unitOfWork.Branches.GetByCodeAsync(dto.Code);
@@ -57,6 +60,7 @@ public class BranchController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = "SuperAdmin")]
     public async Task<IActionResult> Update(int id, CreateBranchDto dto)
     {
         var branch = await _unitOfWork.Branches.GetByIdAsync(id);
@@ -70,6 +74,7 @@ public class BranchController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "SuperAdmin")]
     public async Task<IActionResult> Deactivate(int id)
     {
         var branch = await _unitOfWork.Branches.GetByIdAsync(id);

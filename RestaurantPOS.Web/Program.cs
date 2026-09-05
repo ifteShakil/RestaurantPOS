@@ -11,6 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddMudServices();
+builder.Services.AddScoped<AuthState>();
 //builder.Services.AddSingleton<WeatherForecastService>();
 
 // ⭐ API-কে কল করার জন্য HttpClient রেজিস্টার

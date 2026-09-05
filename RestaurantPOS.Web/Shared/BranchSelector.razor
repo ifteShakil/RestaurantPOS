@@ -1,31 +1,58 @@
-﻿@inject RestaurantPOS.Web.Services.ApiService ApiService
+﻿
+@inject RestaurantPOS.Web.Services.ApiService ApiService
 @inject RestaurantPOS.Web.Services.AppState AppState
+@inject RestaurantPOS.Web.Services.AuthState AuthState
 
 @if (branches != null)
 {
-    <MudSelect T="int" Value="AppState.CurrentBranchId" ValueChanged="OnBranchChanged"
-               ToStringFunc="@GetBranchDisplayText"
-               Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined"
-               FullWidth="false"
-               Style="background:white; border-radius:6px; min-width:220px;">
-        @foreach (var b in branches)
-        {
-            <MudSelectItem T="int" Value="@b.Id">@b.Name (@b.CountryCode)</MudSelectItem>
-        }
-    </MudSelect>
+    @if (IsSuperAdmin)
+    {
+        <MudSelect T="int" Value="AppState.CurrentBranchId" ValueChanged="OnBranchChanged"
+                   ToStringFunc="@GetBranchDisplayText"
+                   Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined"
+                   FullWidth="false"
+                   Style="background:white; border-radius:6px; min-width:220px;">
+            @foreach (var b in branches)
+            {
+                <MudSelectItem T="int" Value="@b.Id">@b.Name (@b.CountryCode)</MudSelectItem>
+            }
+        </MudSelect>
+    }
+    else
+    {
+        <!-- ⭐ সাধারণ স্টাফের জন্য শুধু নিজের ব্রাঞ্চের নাম দেখানো, dropdown না -->
+        <MudChip T="string" Icon="@Icons.Material.Filled.Business" Color="Color.Default">
+            @AppState.CurrentBranchName
+        </MudChip>
+    }
 }
 
 @code {
     private List<RestaurantPOS.Shared.DTOs.Branch.BranchDto>? branches;
 
+    private bool IsSuperAdmin => AuthState.CurrentUser?.Role == "SuperAdmin";
+
     protected override async Task OnInitializedAsync()
     {
         branches = await ApiService.GetBranchesAsync();
-        var current = branches?.FirstOrDefault(b => b.Id == AppState.CurrentBranchId) ?? branches?.FirstOrDefault();
-        if (current != null)
+
+        if (IsSuperAdmin)
         {
-            AppState.SetBranch(current.Id, current.Name, current.CurrencyCode);
+            // SuperAdmin if AppState.CurrentBranchId is not set, set it to the first branch in the list
+            var current = branches?.FirstOrDefault(b => b.Id == AppState.CurrentBranchId) ?? branches?.FirstOrDefault();
+            if (current != null)
+                AppState.SetBranch(current.Id, current.Name, current.CurrencyCode);
         }
+        else if (AuthState.CurrentUser?.BranchId.HasValue == true)
+        {
+            // Staff : set the branch to the user's branch
+            var myBranch = branches?.FirstOrDefault(b => b.Id == AuthState.CurrentUser.BranchId.Value);
+            if (myBranch != null)
+                AppState.SetBranch(myBranch.Id, myBranch.Name, myBranch.CurrencyCode);
+        
+        }
+
+
     }
 
     private void OnBranchChanged(int newBranchId)

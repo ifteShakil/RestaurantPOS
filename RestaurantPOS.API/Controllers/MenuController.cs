@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using RestaurantPOS.Core.Entities;
@@ -9,6 +10,7 @@ namespace RestaurantPOS.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class MenuController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;

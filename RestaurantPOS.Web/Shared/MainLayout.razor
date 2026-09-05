@@ -1,40 +1,145 @@
 ﻿@inherits LayoutComponentBase
 
+@inject RestaurantPOS.Web.Services.AuthState AuthState
+@inject NavigationManager Nav
+@inject Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage.ProtectedSessionStorage SessionStorage
+
+
+
 <MudThemeProvider Theme="_theme" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<MudLayout>
-    <MudAppBar Elevation="2" Color="Color.Primary">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
-        <MudText Typo="Typo.h6" Class="ml-2" Style="font-weight:700;">RestaurantPOS</MudText>
-        <MudSpacer />
-        <div style="max-width:260px; width:100%;">
-            <BranchSelector />
-        </div>
-    </MudAppBar>
 
-    <MudDrawer @bind-Open="_drawerOpen" Elevation="2" Variant="DrawerVariant.Responsive" Color="Color.Primary">
-        <MudDrawerHeader Class="pb-2">
-            <MudStack Spacing="0">
-                <MudText Typo="Typo.h6" Style="line-height:1.2; font-weight:700;">RestaurantPOS</MudText>
-                <MudText Typo="Typo.caption" Style="opacity:0.7; letter-spacing:1px;">ESWATINI</MudText>
-            </MudStack>
-        </MudDrawerHeader>
-        <NavMenu />
-    </MudDrawer>
+@if (!isCheckingAuth && !AuthState.IsLoggedIn)
+{
+    // যদি চেক শেষ হয়ে গেছে এবং লগইন নেই, তাহলে কিছু render না করে redirect হয়ে যাবে
+}
+else if (isCheckingAuth)
+{
+    <div style="display:flex; align-items:center; justify-content:center; height:100vh;">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    </div>
+}
+else
+{
 
-    <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.False" Class="pa-6">
-            @Body
-        </MudContainer>
-    </MudMainContent>
-</MudLayout>
+    <MudLayout>
+        <MudAppBar Elevation="2" Color="Color.Primary">
+            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
+            <MudText Typo="Typo.h6" Class="ml-2" Style="font-weight:700;">RestaurantPOS</MudText>
+            <MudSpacer />
+
+            <div style="max-width:260px; width:100%;">
+                <BranchSelector />
+            </div>
+
+            <!-- ⭐ User menu -->
+            <MudMenu Class="ml-3">
+                <ActivatorContent>
+                    <div style="display:flex; align-items:center; gap:8px; cursor:pointer; color:white;">
+                        <MudAvatar Color="Color.Secondary" Size="Size.Small">
+                            @GetInitials(AuthState.CurrentUser?.FullName)
+                        </MudAvatar>
+                        <div style="text-align:left; line-height:1.1;">
+                            <MudText Typo="Typo.body2" Style="font-weight:600;">@AuthState.CurrentUser?.FullName</MudText>
+                            <MudText Typo="Typo.caption" Style="opacity:0.75;">@AuthState.CurrentUser?.Role</MudText>
+                        </div>
+                        <MudIcon Icon="@Icons.Material.Filled.ArrowDropDown" Size="Size.Small" />
+                    </div>
+                </ActivatorContent>
+                <ChildContent>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Logout" IconColor="Color.Error" OnClick="Logout">
+                        Logout
+                    </MudMenuItem>
+                </ChildContent>
+            </MudMenu>
+        </MudAppBar>
+
+        <MudDrawer @bind-Open="_drawerOpen" Elevation="2" Variant="DrawerVariant.Responsive" Color="Color.Primary">
+            <MudDrawerHeader Class="pb-2">
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.h6" Style="line-height:1.2; font-weight:700;">RestaurantPOS</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:0.7; letter-spacing:1px;">ESWATINI</MudText>
+                </MudStack>
+            </MudDrawerHeader>
+            <NavMenu />
+        </MudDrawer>
+
+        <MudMainContent>
+            <MudContainer MaxWidth="MaxWidth.False" Class="pa-6">
+                @Body
+            </MudContainer>
+        </MudMainContent>
+    </MudLayout>
+
+
+
+}
 
 @code {
     private bool _drawerOpen = true;
+    private bool isCheckingAuth = true;
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (!AuthState.IsLoggedIn)
+            {
+                try
+                {
+                    var tokenResult = await SessionStorage.GetAsync<string>("authToken");
+                    var userResult = await SessionStorage.GetAsync<RestaurantPOS.Shared.DTOs.User.UserDto>("authUser");
+
+                    if (tokenResult.Success && userResult.Success && tokenResult.Value != null && userResult.Value != null)
+                    {
+                        AuthState.SetAuth(tokenResult.Value, userResult.Value);
+                    }
+                }
+                catch
+                {
+                    // storage access ব্যর্থ হলে ignore — নিচে redirect হবে
+                }
+
+                isCheckingAuth = false;
+                StateHasChanged();
+
+                if (!AuthState.IsLoggedIn)
+                {
+                    Nav.NavigateTo("/login", forceLoad: false);
+                }
+            }
+            else
+            {
+                isCheckingAuth = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private string GetInitials(string? fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName)) return "?";
+        var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2
+            ? $"{parts[0][0]}{parts[^1][0]}".ToUpper()
+            : parts[0][0].ToString().ToUpper();
+    }
+  
+
+    private async Task Logout()
+    {
+        AuthState.Clear();
+        await SessionStorage.DeleteAsync("authToken");
+        await SessionStorage.DeleteAsync("authUser");
+        Nav.NavigateTo("/login", forceLoad: true);
+    }
+
+
+
 
     private MudTheme _theme = new MudTheme()
     {

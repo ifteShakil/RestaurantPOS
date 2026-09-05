@@ -1,0 +1,79 @@
+﻿@page "/login"
+@layout EmptyLayout
+@using RestaurantPOS.Shared.DTOs.User
+@inject RestaurantPOS.Web.Services.ApiService ApiService
+@inject RestaurantPOS.Web.Services.AuthState AuthState
+@inject NavigationManager Nav
+@inject Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage.ProtectedSessionStorage SessionStorage
+
+<div style="display:flex; align-items:center; justify-content:center; height:100vh; background:#f4f6fa;">
+    <MudPaper Class="pa-8" Elevation="4" Style="border-radius:16px; width:380px;">
+        <MudText Typo="Typo.h5" Style="color:#0a1f44; font-weight:700; text-align:center;" Class="mb-1">
+            RestaurantPOS
+        </MudText>
+        <MudText Typo="Typo.caption" Style="text-align:center; display:block; opacity:0.6;" Class="mb-6">
+            ESWATINI
+        </MudText>
+
+        <MudTextField T="string" @bind-Value="username" Label="Username" Variant="Variant.Outlined"
+                      Margin="Margin.Dense" Class="mb-3" />
+        <MudTextField T="string" @bind-Value="password" Label="Password" Variant="Variant.Outlined"
+                      InputType="InputType.Password" Margin="Margin.Dense" Class="mb-4"
+                      @onkeydown="HandleKeyDown" />
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Size="Size.Large"
+                   OnClick="HandleLogin" Disabled="@isLoading">
+            @(isLoading ? "Logging in..." : "Login")
+        </MudButton>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3" Dense="true">@errorMessage</MudAlert>
+        }
+    </MudPaper>
+</div>
+
+@code {
+    private string username = "";
+    private string password = "";
+    private string? errorMessage;
+    private bool isLoading = false;
+
+    private async Task HandleKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await HandleLogin();
+    }
+
+    private async Task HandleLogin()
+    {
+        errorMessage = null;
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+        {
+            errorMessage = "Please enter username and password.";
+            return;
+        }
+
+        isLoading = true;
+        try
+        {
+            var result = await ApiService.LoginAsync(new LoginDto { Username = username, Password = password });
+            if (result == null)
+            {
+                errorMessage = "Invalid username or password.";
+                return;
+            }
+
+            AuthState.SetAuth(result.Token, result.User);
+
+            // ⭐ Token ব্রাউজার সেশনে সংরক্ষণ (পেজ রিফ্রেশে হারাবে না)
+            await SessionStorage.SetAsync("authToken", result.Token);
+            await SessionStorage.SetAsync("authUser", result.User);
+
+            Nav.NavigateTo("/", forceLoad: true);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

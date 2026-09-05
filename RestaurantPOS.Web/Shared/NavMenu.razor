@@ -1,4 +1,6 @@
-﻿<MudNavMenu Color="Color.Warning" Class="pa-2">
+﻿@inject RestaurantPOS.Web.Services.AuthState AuthState
+
+<MudNavMenu Color="Color.Warning" Class="pa-2">
     <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
         Home
     </MudNavLink>
@@ -9,29 +11,44 @@
         Orders
     </MudNavLink>
 
-    <MudNavGroup Expanded="true">
-        <TitleContent>
-            <div style="display:flex; align-items:center; gap:8px; color:#e8e8f0;">
-                <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" />
-                <span style="font-weight:500;">Management</span>
-            </div>
-        </TitleContent>
-        <ChildContent>
-            <MudNavLink Href="admin/categories" Icon="@Icons.Material.Filled.Category">
-                Menu Categories
-            </MudNavLink>
-            <MudNavLink Href="admin/menu-items" Icon="@Icons.Material.Filled.Restaurant">
-                Menu Items
-            </MudNavLink>
-            <MudNavLink Href="admin/tables" Icon="@Icons.Material.Filled.TableRestaurant">
-                Tables
-            </MudNavLink>
-            <MudNavLink Href="admin/branches" Icon="@Icons.Material.Filled.Business">
-                Branches
-            </MudNavLink>
-            <MudNavLink Href="admin/users" Icon="@Icons.Material.Filled.People">
-                Staff
-            </MudNavLink>
-        </ChildContent>
-    </MudNavGroup>
+    @if (CanManage)
+    {
+        <MudNavGroup Expanded="true">
+            <TitleContent>
+                <div style="display:flex; align-items:center; gap:8px; color:#e8e8f0;">
+                    <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" />
+                    <span style="font-weight:500;">Management</span>
+                </div>
+            </TitleContent>
+            <ChildContent>
+                <MudNavLink Href="admin/categories" Icon="@Icons.Material.Filled.Category">
+                    Menu Categories
+                </MudNavLink>
+                <MudNavLink Href="admin/menu-items" Icon="@Icons.Material.Filled.Restaurant">
+                    Menu Items
+                </MudNavLink>
+                <MudNavLink Href="admin/tables" Icon="@Icons.Material.Filled.TableRestaurant">
+                    Tables
+                </MudNavLink>
+                @if (IsSuperAdmin)
+                {
+                    <MudNavLink Href="admin/branches" Icon="@Icons.Material.Filled.Business">
+                        Branches
+                    </MudNavLink>
+                }
+                @if (IsSuperAdmin || IsBranchManager)
+                {
+                    <MudNavLink Href="admin/users" Icon="@Icons.Material.Filled.People">
+                        Staff
+                    </MudNavLink>
+                }
+            </ChildContent>
+        </MudNavGroup>
+    }
 </MudNavMenu>
+
+@code {
+    private bool IsSuperAdmin => AuthState.CurrentUser?.Role == "SuperAdmin";
+    private bool IsBranchManager => AuthState.CurrentUser?.Role == "BranchManager";
+    private bool CanManage => IsSuperAdmin || IsBranchManager;
+}
