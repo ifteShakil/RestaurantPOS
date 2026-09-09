@@ -6,6 +6,7 @@
 @inject RestaurantPOS.Web.Services.ApiService ApiService
 @inject RestaurantPOS.Web.Services.AppState AppState
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <MudText Typo="Typo.h5" Class="mb-4" Style="color:#0a1f44; font-weight:700;">
     New Order — @AppState.CurrentBranchName
@@ -236,6 +237,7 @@ else
             var order = await ApiService.CreateOrderAsync(dto);
             if (order != null)
             {
+                await JS.InvokeVoidAsync("open", $"/order/{order.Id}/kot", "_blank");   // ⭐ নতুন — KOT অটো-প্রিন্ট
                 Nav.NavigateTo($"/order/{order.Id}");
             }
         }

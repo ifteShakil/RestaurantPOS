@@ -1,0 +1,24 @@
+﻿@using RestaurantPOS.Shared.DTOs.Order
+
+<div class="ticket">
+    <h2>KITCHEN ORDER TICKET</h2>
+    <div class="row"><span class="big">Ticket #@Order.DailyTicketNumber</span><span>Table @Order.TableName</span></div>
+    <div class="row"><span>Order #@Order.Id</span><span>@Order.CreatedAt.ToLocalTime().ToString("hh:mm tt")</span></div>
+    <div class="row"><span>Waiter: @Order.WaiterName</span></div>
+    <hr />
+    @foreach (var item in Order.Items.Where(i => !i.IsCancelled))
+    {
+        <div class="item-line"><strong>@item.Quantity x</strong> @item.MenuItemName.ToUpper()</div>
+        @if (!string.IsNullOrWhiteSpace(item.Note))
+        {
+            <div class="item-note">→ @item.Note</div>
+        }
+    }
+    <hr />
+    <div class="copy-label">[@CopyLabel]</div>
+</div>
+
+@code {
+    [Parameter] public OrderDto Order { get; set; } = null!;
+    [Parameter] public string CopyLabel { get; set; } = "";
+}

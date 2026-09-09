@@ -1,0 +1,110 @@
+﻿@using RestaurantPOS.Shared.DTOs.Menu
+@using RestaurantPOS.Shared.DTOs.Order
+@inject RestaurantPOS.Web.Services.ApiService ApiService
+@inject RestaurantPOS.Web.Services.AppState AppState
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField T="string" @bind-Value="searchText" @bind-Value:after="ApplyFilter"
+                      Placeholder="Search menu items..." Variant="Variant.Outlined"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      Immediate="true" Clearable="true" Class="mb-3" />
+
+        <div style="max-height:320px; overflow-y:auto;">
+            <MudGrid>
+                @foreach (var item in filteredItems)
+                {
+                    <MudItem xs="6" sm="4">
+                        <MudPaper Class="pa-2" Elevation="1" Style="border-radius:8px;">
+                            <MudText Typo="Typo.body2" Style="font-weight:600;">@item.Name</MudText>
+                            <MudText Typo="Typo.caption">@item.CurrencyCode @item.Price.ToString("N2")</MudText>
+                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                                       Class="mt-1" OnClick="() => AddToBasket(item)">
+                                + Add
+                            </MudButton>
+                        </MudPaper>
+                    </MudItem>
+                }
+            </MudGrid>
+        </div>
+
+        <MudDivider Class="my-3" />
+
+        <MudText Typo="Typo.subtitle2" Class="mb-2">To Add (@basket.Sum(b => b.Quantity) items)</MudText>
+        @if (!basket.Any())
+        {
+            <MudText Typo="Typo.body2" Style="opacity:0.6;">No items selected yet.</MudText>
+        }
+        else
+        {
+            @foreach (var line in basket)
+            {
+                <div style="display:flex; align-items:center; justify-content:space-between;" class="mb-1">
+                    <MudText Typo="Typo.body2">@line.Name</MudText>
+                    <div style="display:flex; align-items:center; gap:4px;">
+                        <MudIconButton Icon="@Icons.Material.Filled.Remove" Size="Size.Small" OnClick="() => Decrement(line)" />
+                        <MudText Typo="Typo.body2">@line.Quantity</MudText>
+                        <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="() => Increment(line)" />
+                    </div>
+                </div>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Close</MudButton>
+        <MudButton Color="Color.Success" Variant="Variant.Filled" Disabled="@(!basket.Any())" OnClick="Submit">
+            Add to Order
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private List<MenuItemDto> menuItems = new();
+    private List<MenuItemDto> filteredItems = new();
+    private string searchText = "";
+    private List<BasketLine> basket = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        menuItems = await ApiService.GetMenuByBranchAsync(AppState.CurrentBranchId) ?? new();
+        filteredItems = menuItems;
+    }
+
+    private void ApplyFilter()
+    {
+        filteredItems = string.IsNullOrWhiteSpace(searchText)
+            ? menuItems
+            : menuItems.Where(m => m.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase)).ToList();
+    }
+
+    private void AddToBasket(MenuItemDto item)
+    {
+        var existing = basket.FirstOrDefault(b => b.MenuItemId == item.Id);
+        if (existing != null) existing.Quantity++;
+        else basket.Add(new BasketLine { MenuItemId = item.Id, Name = item.Name, Quantity = 1 });
+    }
+
+    private void Increment(BasketLine line) => line.Quantity++;
+    private void Decrement(BasketLine line)
+    {
+        line.Quantity--;
+        if (line.Quantity <= 0) basket.Remove(line);
+    }
+
+    private void Submit()
+    {
+        var items = basket.Select(b => new CreateOrderItemDto { MenuItemId = b.MenuItemId, Quantity = b.Quantity }).ToList();
+        MudDialog.Close(DialogResult.Ok(items));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private class BasketLine
+    {
+        public int MenuItemId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+    }
+}

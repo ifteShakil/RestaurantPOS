@@ -1,6 +1,10 @@
 ﻿@page "/order/{OrderId:int}"
+@using RestaurantPOS.Shared.DTOs.Order
 @using RestaurantPOS.Shared.DTOs.Payment
 @inject RestaurantPOS.Web.Services.ApiService ApiService
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <MudText Typo="Typo.h5" Class="mb-4" Style="color:#0a1f44; font-weight:700;">
     Order #@OrderId
@@ -20,18 +24,72 @@ else
                     <MudChip T="string" Color="@GetStatusColor(order.Status)" Size="Size.Small">@order.Status</MudChip>
                 </div>
 
+                @* <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Print"
+                           Class="mb-2" OnClick="PrintKot">
+                    Print KOT
+                </MudButton> *@
+
+                <div style="display:flex; gap:8px;" class="mb-2">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Print"
+                               OnClick="PrintKot">
+                        Print KOT
+                    </MudButton>
+
+                    @if (order.Status != "Paid" && bill == null)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="OpenAddItemsDialog">
+                            Add Items
+                        </MudButton>
+                    }
+                </div>
+
                 <MudTable Items="order.Items" Dense="true" Hover="true" Elevation="0">
                     <HeaderContent>
                         <MudTh>Item</MudTh>
                         <MudTh>Qty</MudTh>
                         <MudTh Style="text-align:right;">Price</MudTh>
+                        <MudTh Style="text-align:right;">Actions</MudTh>
                     </HeaderContent>
                     <RowTemplate>
-                        <MudTd DataLabel="Item">@context.MenuItemName</MudTd>
-                        <MudTd DataLabel="Qty">@context.Quantity</MudTd>
-                        <MudTd DataLabel="Price" Style="text-align:right;">@((context.UnitPrice * context.Quantity).ToString("N2"))</MudTd>
+                        <MudTd DataLabel="Item">
+                            @context.MenuItemName
+                            @if (context.CancelledQuantity > 0)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Error" Class="ml-2">
+                                    @context.CancelledQuantity cancelled
+                                </MudChip>
+                            }
+                        </MudTd>
+
+                        <MudTd DataLabel="Qty">
+                            @context.ActiveQuantity
+                            @if (context.CancelledQuantity > 0)
+                            {
+                                <MudText Typo="Typo.caption" Style="opacity:0.6;">(of @context.Quantity)</MudText>
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="Price" Style="text-align:right;">
+                            @((context.UnitPrice * context.ActiveQuantity).ToString("N2"))
+                        </MudTd>
+                        <MudTd DataLabel="Actions" Style="text-align:right;">
+                            @if (context.ActiveQuantity > 0 && order.Status != "Paid")
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Cancel" Size="Size.Small" Color="Color.Error"
+                                               OnClick="() => OpenCancelDialog(context)" />
+                            }
+                        </MudTd>
+                        @* <MudTd DataLabel="Actions" Style="text-align:right;">
+                            @if (!context.IsCancelled && order.Status != "Paid")
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Cancel" Size="Size.Small" Color="Color.Error"
+                                               OnClick="() => CancelItem(context.Id)" />
+                            }
+                        </MudTd> *@
                     </RowTemplate>
                 </MudTable>
+
+
             </MudPaper>
         </MudItem>
 
@@ -126,4 +184,71 @@ else
         "Cancelled" => Color.Error,
         _ => Color.Default
     };
+
+
+    private async Task PrintKot()
+    {
+        await JS.InvokeVoidAsync("open", $"/order/{OrderId}/kot", "_blank");
+    }
+
+    // private async Task CancelItem(int itemId)
+    // {
+    //     var success = await ApiService.CancelOrderItemAsync(OrderId, itemId);
+    //     if (success)
+    //     {
+    //         await JS.InvokeVoidAsync("open", $"/order/{OrderId}/void/{itemId}", "_blank");
+    //         order = await ApiService.GetOrderAsync(OrderId);   // রিফ্রেশ
+    //     }
+    // }
+
+    private async Task OpenCancelDialog(OrderItemDto item)
+    {
+        var parameters = new DialogParameters<CancelItemDialog> { { x => x.Item, item } };
+        var dialog = await DialogService.ShowAsync<CancelItemDialog>("Cancel Item", parameters);
+        var result = await dialog.Result;
+
+        if (!result!.Canceled && result.Data is int qty)
+        {
+            var success = await ApiService.CancelOrderItemAsync(OrderId, item.Id, qty);
+            if (success)
+            {
+                Snackbar.Add($"{qty} x {item.MenuItemName} cancelled.", Severity.Warning);
+                await JS.InvokeVoidAsync("open", $"/order/{OrderId}/void/{item.Id}/{qty}", "_blank");
+                order = await ApiService.GetOrderAsync(OrderId);
+            }
+            else
+            {
+                Snackbar.Add("Failed to cancel item.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenAddItemsDialog()
+    {
+        var dialog = await DialogService.ShowAsync<AddItemsDialog>("Add Items to Order");
+        var result = await dialog.Result;
+
+        if (!result!.Canceled && result.Data is List<RestaurantPOS.Shared.DTOs.Order.CreateOrderItemDto> items)
+        {
+            var response = await ApiService.AddItemsToOrderAsync(OrderId,
+                new RestaurantPOS.Shared.DTOs.Order.AddOrderItemsDto { Items = items });
+
+            if (response != null)
+            {
+                Snackbar.Add("Items added to order!", Severity.Success);
+                order = response.Order;
+
+                // ⭐ শুধু নতুন আইটেমের Add-on KOT প্রিন্ট
+                var idsParam = string.Join(",", response.NewItemIds);
+                await JS.InvokeVoidAsync("open", $"/order/{OrderId}/kot/addon?items={idsParam}", "_blank");
+            }
+            else
+            {
+                Snackbar.Add("Failed to add items. Bill may already be generated.", Severity.Error);
+            }
+        }
+    }
+
+
+
 }

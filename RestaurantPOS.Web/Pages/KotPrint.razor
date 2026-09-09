@@ -1,0 +1,98 @@
+﻿@page "/order/{OrderId:int}/kot"
+@layout EmptyLayout
+@using RestaurantPOS.Shared.DTOs.Order
+@inject RestaurantPOS.Web.Services.ApiService ApiService
+@inject RestaurantPOS.Web.Services.AuthState AuthState
+@inject Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage.ProtectedSessionStorage SessionStorage
+@inject IJSRuntime JS
+
+<style>
+    @@media print {
+        .no-print { display: none; }
+    }
+    body { font-family: 'Courier New', monospace; background: #eee; }
+    .ticket {
+        width: 302px;
+        margin: 0 auto 24px auto;
+        padding: 12px;
+        background: white;
+        border: 1px solid #ccc;
+    }
+    .ticket h2 { text-align: center; margin: 4px 0; font-size: 16px; }
+    .ticket .big { font-size: 20px; font-weight: bold; }
+    .ticket .row { display: flex; justify-content: space-between; font-size: 13px; margin: 2px 0; }
+    .ticket hr { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+    .item-line { font-size: 14px; margin: 4px 0; }
+    .item-note { font-size: 12px; padding-left: 16px; opacity: 0.75; }
+    .copy-label { text-align: center; font-weight: bold; margin-top: 10px; font-size: 12px; letter-spacing: 1px; }
+</style>
+
+@if (isLoading)
+{
+    <p class="no-print" style="text-align:center; padding:24px;">Loading...</p>
+}
+else if (order == null)
+{
+    <p class="no-print" style="text-align:center; padding:24px; color:red;">
+        Could not load order. Please try printing again from the Order Detail page.
+    </p>
+}
+else
+{
+    <div class="no-print" style="text-align:center; padding:16px;">
+        <button @onclick="PrintNow" style="padding:8px 20px; font-size:14px;">🖨️ Print KOT</button>
+    </div>
+
+    <KotTicket Order="order" CopyLabel="KITCHEN COPY" />
+    <KotTicket Order="order" CopyLabel="WAITER COPY" />
+}
+
+
+
+@code {
+    [Parameter] public int OrderId { get; set; }
+    private OrderDto? order;
+    private bool isLoading = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // ⭐ নতুন circuit-এ AuthState খালি থাকে — session storage থেকে টোকেন ফিরিয়ে আনা
+            if (!AuthState.IsLoggedIn)
+            {
+                try
+                {
+                    var tokenResult = await SessionStorage.GetAsync<string>("authToken");
+                    var userResult = await SessionStorage.GetAsync<RestaurantPOS.Shared.DTOs.User.UserDto>("authUser");
+
+                    if (tokenResult.Success && userResult.Success && tokenResult.Value != null && userResult.Value != null)
+                    {
+                        AuthState.SetAuth(tokenResult.Value, userResult.Value);
+                    }
+                }
+                catch
+                {
+                    // ignore
+                }
+            }
+
+            order = await ApiService.GetOrderAsync(OrderId);
+            isLoading = false;
+            StateHasChanged();
+
+            if (order != null)
+            {
+                await Task.Delay(200);
+                await PrintNow();
+            }
+        }
+    }
+
+    private async Task PrintNow() => await JS.InvokeVoidAsync("print");
+
+
+
+
+
+}

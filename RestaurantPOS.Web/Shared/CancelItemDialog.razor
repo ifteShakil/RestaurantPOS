@@ -1,0 +1,30 @@
+﻿@using RestaurantPOS.Shared.DTOs.Order
+
+<MudDialog>
+    <DialogContent>
+        <MudText Class="mb-3">
+            <strong>@Item.MenuItemName</strong> — @Item.ActiveQuantity item(s) currently active. Please specify the quantity you want to cancel.
+        </MudText>
+        <MudNumericField T="int" @bind-Value="cancelQty" Label="Quantity to Cancel"
+                         Variant="Variant.Outlined" Min="1" Max="@Item.ActiveQuantity" />
+        <MudText Typo="Typo.caption" Class="mt-1" Style="opacity:0.6;">
+            Currently active: @Item.ActiveQuantity
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Close</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="Submit">
+            Cancel @cancelQty item(s)
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public OrderItemDto Item { get; set; } = null!;
+
+    private int cancelQty = 1;
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(cancelQty));
+    private void Cancel() => MudDialog.Cancel();
+}

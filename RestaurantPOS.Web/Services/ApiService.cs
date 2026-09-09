@@ -218,6 +218,23 @@ public class ApiService
         return await _http.GetFromJsonAsync<List<OrderDto>>($"api/order/branch/{branchId}/active");
     }
 
+    public async Task<bool> CancelOrderItemAsync(int orderId, int itemId, int quantity)
+    {
+        ApplyAuthHeader();
+        var response = await _http.PatchAsJsonAsync($"api/order/{orderId}/items/{itemId}/cancel",
+            new CancelItemDto { Quantity = quantity });
+        return response.IsSuccessStatusCode;
+    }
+
+
+    public async Task<AddOrderItemsResponseDto?> AddItemsToOrderAsync(int orderId, AddOrderItemsDto dto)
+    {
+        ApplyAuthHeader();
+        var response = await _http.PostAsJsonAsync($"api/order/{orderId}/items", dto);
+        if (!response.IsSuccessStatusCode) return null;
+        return await response.Content.ReadFromJsonAsync<AddOrderItemsResponseDto>();
+    }
+
 
     // Bill & Payment
     public async Task<BillDto?> GenerateBillAsync(int orderId)

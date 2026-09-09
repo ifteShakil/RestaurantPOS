@@ -14,4 +14,7 @@ public interface IOrderRepository : IGenericRepository<Order>
     Task<Order?> GetOrderWithItemsAsync(int orderId);
     Task<List<Order>> GetOrdersByTableAsync(int tableId);
     Task<DashboardSummary> GetDashboardSummaryAsync(int branchId);
+    Task<int> GetTodayOrderCountAsync(int branchId);
+
+
 }

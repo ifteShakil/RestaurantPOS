@@ -32,7 +32,8 @@ public class BillController : ControllerBase
         var branch = await _unitOfWork.Branches.GetByIdAsync(order.BranchId);
         if (branch == null) return NotFound("Branch not found.");
 
-        decimal subTotal = order.Items.Sum(i => i.UnitPrice * i.Quantity);
+        decimal subTotal = order.Items.Sum(i => i.UnitPrice * (i.Quantity - i.CancelledQuantity));
+        //decimal subTotal = order.Items.Where(i => !i.IsCancelled).Sum(i => i.UnitPrice * i.Quantity);
         decimal taxAmount = subTotal * (branch.TaxRatePercent / 100);
 
         var bill = new Bill
@@ -53,7 +54,10 @@ public class BillController : ControllerBase
         await _unitOfWork.SaveChangesAsync();
 
         return Ok(_mapper.Map<BillDto>(bill));
+    
     }
+
+
 
     [HttpPost("payment")]
     public async Task<IActionResult> AddPayment(CreatePaymentDto dto)

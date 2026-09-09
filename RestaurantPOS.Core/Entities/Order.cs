@@ -33,6 +33,8 @@ public class Order
 
     public List<OrderItem> Items { get; set; } = new();
     public Bill? Bill { get; set; }
+
+    public int DailyTicketNumber { get; set; } // প্রতিদিনের অর্ডারের জন্য ক্রমিক সংখ্যা, যা প্রতিটি ব্রাঞ্চের জন্য আলাদা হবে
 }
 
 public class OrderItem
@@ -42,6 +44,10 @@ public class OrderItem
     public decimal UnitPrice { get; set; }     // অর্ডারের সময়ের প্রাইস (দাম পরে বদলালেও বিল ঠিক থাকবে)
     public string? Note { get; set; }          // যেমন: ঝাল কম
 
+    public int CancelledQuantity { get; set; } = 0;      // ⭐ IsCancelled bool-এর বদলে
+    public DateTime? LastCancelledAt { get; set; }        // ⭐ CancelledAt-এর জায়গায় রিনেম
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
     public int OrderId { get; set; }
     public Order? Order { get; set; }
 
@@ -50,4 +56,7 @@ public class OrderItem
 
     public int? MenuItemVariantId { get; set; }
     public MenuItemVariant? MenuItemVariant { get; set; }
+
+    public bool IsCancelled { get; set; } = false;   
+    public DateTime? CancelledAt { get; set; }        
 }

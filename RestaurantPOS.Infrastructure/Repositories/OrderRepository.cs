@@ -72,4 +72,10 @@ public class OrderRepository : GenericRepository<Order>, IOrderRepository
         };
     }
 
+    public async Task<int> GetTodayOrderCountAsync(int branchId)
+    {
+        var today = DateTime.UtcNow.Date;
+        return await _dbSet.CountAsync(o => o.BranchId == branchId && o.CreatedAt.Date == today);
+    }
+
 }

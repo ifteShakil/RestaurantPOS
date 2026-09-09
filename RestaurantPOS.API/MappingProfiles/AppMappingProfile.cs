@@ -36,7 +36,11 @@ public class AppMappingProfile : Profile
             .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
             .ForMember(dest => dest.TableName, opt => opt.MapFrom(src => src.Table!.Name))
             .ForMember(dest => dest.WaiterName, opt => opt.MapFrom(src => src.Waiter!.FullName))
-            .ForMember(dest => dest.TotalAmount, opt => opt.MapFrom(src => src.Items.Sum(i => i.UnitPrice * i.Quantity)));
+            .ForMember(dest => dest.TotalAmount, opt => opt.MapFrom(src => src.Items.Sum(i => i.UnitPrice * (i.Quantity - i.CancelledQuantity))));
+        
+        // Only CancelledQuantity is mapped, ActiveQuantity is computed in DTO   
+
+
 
         CreateMap<OrderItem, OrderItemDto>()
             .ForMember(dest => dest.MenuItemName, opt => opt.MapFrom(src => src.MenuItem!.Name))

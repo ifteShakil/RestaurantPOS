@@ -1,0 +1,157 @@
+﻿@page "/order/{OrderId:int}/kot/addon"
+@layout EmptyLayout
+@using RestaurantPOS.Shared.DTOs.Order
+@inject RestaurantPOS.Web.Services.ApiService ApiService
+@inject RestaurantPOS.Web.Services.AuthState AuthState
+@inject Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage.ProtectedSessionStorage SessionStorage
+@inject IJSRuntime JS
+
+
+<style>
+    @@media print {
+        .no-print {
+            display: none;
+        }
+    }
+
+    body {
+        font-family: 'Courier New', monospace;
+        background: #eee;
+    }
+
+    .ticket {
+        width: 302px;
+        margin: 0 auto 24px auto;
+        padding: 12px;
+        background: white;
+        border: 3px solid #d9822b;
+    }
+
+        .ticket h2 {
+            text-align: center;
+            margin: 4px 0;
+            font-size: 16px;
+            color: #d9822b;
+        }
+
+    .row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        margin: 2px 0;
+    }
+
+    .big {
+        font-size: 20px;
+        font-weight: bold;
+    }
+
+    hr {
+        border: none;
+        border-top: 1px dashed #000;
+        margin: 6px 0;
+    }
+
+    .item-line {
+        font-size: 14px;
+        margin: 4px 0;
+    }
+
+    .item-note {
+        font-size: 12px;
+        padding-left: 16px;
+        opacity: 0.75;
+    }
+
+    .copy-label {
+        text-align: center;
+        font-weight: bold;
+        margin-top: 10px;
+        font-size: 12px;
+        letter-spacing: 1px;
+        color: #d9822b;
+    }
+</style>
+
+@if (isLoading)
+{
+    <p class="no-print" style="text-align:center; padding:24px;">Loading...</p>
+}
+else if (order == null || !newItems.Any())
+{
+    <p class="no-print" style="text-align:center; padding:24px; color:red;">Could not load items.</p>
+}
+else
+{
+    <div class="no-print" style="text-align:center; padding:16px;">
+        <button @onclick="PrintNow" style="padding:8px 20px;">🖨️ Print Add-On KOT</button>
+    </div>
+
+    @for (int copy = 0; copy < 2; copy++)
+    {
+        <div class="ticket">
+            <h2>⭐ ADDITIONAL ORDER ⭐</h2>
+            <div class="row"><span class="big">Ticket #@order.DailyTicketNumber</span><span>Table @order.TableName</span></div>
+            <div class="row"><span>Order #@order.Id</span><span>@DateTime.Now.ToString("hh:mm tt")</span></div>
+            <hr />
+            @foreach (var item in newItems)
+            {
+                <div class="item-line"><strong>@item.Quantity x</strong> @item.MenuItemName.ToUpper()</div>
+                @if (!string.IsNullOrWhiteSpace(item.Note))
+                {
+                    <div class="item-note">→ @item.Note</div>
+                }
+            }
+            <hr />
+            <div class="copy-label">[@(copy == 0 ? "KITCHEN COPY" : "WAITER COPY")]</div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public int OrderId { get; set; }
+    private OrderDto? order;
+    private List<OrderItemDto> newItems = new();
+    private bool isLoading = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (!AuthState.IsLoggedIn)
+            {
+                try
+                {
+                    var tokenResult = await SessionStorage.GetAsync<string>("authToken");
+                    var userResult = await SessionStorage.GetAsync<RestaurantPOS.Shared.DTOs.User.UserDto>("authUser");
+                    if (tokenResult.Success && userResult.Success && tokenResult.Value != null && userResult.Value != null)
+                        AuthState.SetAuth(tokenResult.Value, userResult.Value);
+                }
+                catch { }
+            }
+
+            var uri = new Uri(NavManagerUri);
+            var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+            var idList = query.TryGetValue("items", out var val)
+                ? val.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList()
+                : new List<int>();
+
+            order = await ApiService.GetOrderAsync(OrderId);
+            newItems = order?.Items.Where(i => idList.Contains(i.Id)).ToList() ?? new();
+
+            isLoading = false;
+            StateHasChanged();
+
+            if (newItems.Any())
+            {
+                await Task.Delay(200);
+                await PrintNow();
+            }
+        }
+    }
+
+    [Inject] private NavigationManager Nav { get; set; } = null!;
+    private string NavManagerUri => Nav.Uri;
+
+    private async Task PrintNow() => await JS.InvokeVoidAsync("print");
+}
